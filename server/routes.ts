@@ -11,6 +11,7 @@ import {
   insertViagemExecutadaSchema,
   insertHospedagemExecutadaSchema,
   insertPrestacaoAdiantamentoSchema,
+  insertPrestacaoAdiantamentoItemSchema,
   insertPrestacaoReembolsoSchema,
 } from "@shared/schema";
 
@@ -583,6 +584,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // ============================================================================
+  // ITENS DE DESPESA DA PRESTAÇÃO DE ADIANTAMENTO
+  // ============================================================================
+
+  // GET all itens de despesa for a prestação
+  app.get("/api/prestacao-adiantamento/:id/itens", isAuthenticated, async (req, res) => {
+    try {
+      const prestacaoId = parseInt(req.params.id);
+      const itens = await storage.getPrestacaoAdiantamentoItens(prestacaoId);
+      res.json(itens);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // POST create new item de despesa
+  app.post("/api/prestacao-adiantamento/:id/itens", isAuthenticated, async (req, res) => {
+    try {
+      const prestacaoId = parseInt(req.params.id);
+      const validated = insertPrestacaoAdiantamentoItemSchema.parse({
+        ...req.body,
+        prestacaoAdiantamentoId: prestacaoId,
+      });
+      const result = await storage.createPrestacaoAdiantamentoItem(validated);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // PATCH update item de despesa
+  app.patch("/api/prestacao-adiantamento/itens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const result = await storage.updatePrestacaoAdiantamentoItem(itemId, req.body);
+      if (!result) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // DELETE item de despesa
+  app.delete("/api/prestacao-adiantamento/itens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      await storage.deletePrestacaoAdiantamentoItem(itemId);
+      res.json({ message: "Item deleted successfully" });
+    } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   });
