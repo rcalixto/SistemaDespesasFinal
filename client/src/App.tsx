@@ -5,26 +5,26 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Adiantamentos from "@/pages/adiantamentos";
-import Reembolsos from "@/pages/reembolsos";
-import Passagens from "@/pages/passagens";
-import Hospedagens from "@/pages/hospedagens";
-import ViagensExecutadas from "@/pages/viagens-executadas";
-import HospedagensExecutadas from "@/pages/hospedagens-executadas";
-import PendenciasDiretoria from "@/pages/pendencias-diretoria";
-import PendenciasFinanceiro from "@/pages/pendencias-financeiro";
-import DashboardFinanceiro from "@/pages/dashboard-financeiro";
-import PainelViagens from "@/pages/painel-viagens";
-import PainelHospedagens from "@/pages/painel-hospedagens";
 import type { User } from "@shared/schema";
+
+// Lazy load pages that don't exist yet
+const Reembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold">Reembolsos - Em breve</h1></div>;
+const Passagens = () => <div className="p-8"><h1 className="text-2xl font-bold">Passagens Aéreas - Em breve</h1></div>;
+const Hospedagens = () => <div className="p-8"><h1 className="text-2xl font-bold">Hospedagens - Em breve</h1></div>;
+const ViagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold">Viagens Executadas - Em breve</h1></div>;
+const HospedagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold">Hospedagens Executadas - Em breve</h1></div>;
+const PrestacaoAdiantamentos = () => <div className="p-8"><h1 className="text-2xl font-bold">Prestação de Adiantamentos - Em breve</h1></div>;
+const PrestacaoReembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold">Prestação de Reembolsos - Em breve</h1></div>;
 
 function AuthenticatedRouter() {
   return (
     <Switch>
+      <Route path="/dashboard" component={Home} />
       <Route path="/" component={Home} />
       <Route path="/adiantamentos" component={Adiantamentos} />
       <Route path="/reembolsos" component={Reembolsos} />
@@ -32,11 +32,8 @@ function AuthenticatedRouter() {
       <Route path="/hospedagens" component={Hospedagens} />
       <Route path="/viagens-executadas" component={ViagensExecutadas} />
       <Route path="/hospedagens-executadas" component={HospedagensExecutadas} />
-      <Route path="/pendencias-diretoria" component={PendenciasDiretoria} />
-      <Route path="/pendencias-financeiro" component={PendenciasFinanceiro} />
-      <Route path="/dashboard-financeiro" component={DashboardFinanceiro} />
-      <Route path="/painel-viagens" component={PainelViagens} />
-      <Route path="/painel-hospedagens" component={PainelHospedagens} />
+      <Route path="/prestacao-adiantamentos" component={PrestacaoAdiantamentos} />
+      <Route path="/prestacao-reembolsos" component={PrestacaoReembolsos} />
       <Route component={NotFound} />
     </Switch>
   );
