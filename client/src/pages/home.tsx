@@ -16,10 +16,24 @@ import { Link } from "wouter";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { User } from "@shared/schema";
 
+interface DashboardStats {
+  adiantamentos: { total: number; valorTotal: number };
+  reembolsos: { total: number; valorTotal: number };
+  viagens: { total: number };
+  passagens: { total: number };
+}
+
 export default function Home() {
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: ["/api/auth/user"],
   });
+
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard/stats"],
+    enabled: !!user,
+  });
+
+  const isLoading = userLoading || statsLoading;
 
   if (isLoading) {
     return (
@@ -58,8 +72,8 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
-              0
+            <p className="text-4xl font-bold" style={{ color: "#004650" }} data-testid="stat-adiantamentos-total">
+              {stats?.adiantamentos.total ?? 0}
             </p>
             <p className="mt-1" style={{ color: "#4A5458" }}>
               Solicitações registradas
@@ -75,8 +89,11 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
-              R$ 0,00
+            <p className="text-4xl font-bold" style={{ color: "#004650" }} data-testid="stat-adiantamentos-valor">
+              {new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+              }).format(stats?.adiantamentos.valorTotal ?? 0)}
             </p>
             <p className="mt-1" style={{ color: "#4A5458" }}>
               Total liberado
@@ -92,8 +109,8 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
-              0
+            <p className="text-4xl font-bold" style={{ color: "#004650" }} data-testid="stat-reembolsos-total">
+              {stats?.reembolsos.total ?? 0}
             </p>
             <p className="mt-1" style={{ color: "#4A5458" }}>
               Processos registrados
@@ -109,8 +126,8 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
-              0
+            <p className="text-4xl font-bold" style={{ color: "#004650" }} data-testid="stat-viagens-total">
+              {stats?.viagens.total ?? 0}
             </p>
             <p className="mt-1" style={{ color: "#4A5458" }}>
               Executadas

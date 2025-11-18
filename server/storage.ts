@@ -130,6 +130,14 @@ export interface IStorage {
   getHospedagemExecutadaById(id: number): Promise<HospedagemExecutada | undefined>;
   createHospedagemExecutada(data: InsertHospedagemExecutada): Promise<HospedagemExecutada>;
   updateHospedagemExecutada(id: number, data: Partial<HospedagemExecutada>): Promise<HospedagemExecutada | undefined>;
+
+  // Dashboard Stats
+  getDashboardStats(colaboradorId?: number): Promise<{
+    adiantamentos: { total: number; valorTotal: number };
+    reembolsos: { total: number; valorTotal: number };
+    viagens: { total: number };
+    passagens: { total: number };
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -576,6 +584,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(hospedagensExecutadas.id, id))
       .returning();
     return result[0];
+  }
+
+  // ============================================================================
+  // DASHBOARD STATS
+  // ============================================================================
+
+  async getDashboardStats(colaboradorId?: number): Promise<{
+    adiantamentos: { total: number; valorTotal: number };
+    reembolsos: { total: number; valorTotal: number };
+    viagens: { total: number };
+    passagens: { total: number };
+  }> {
+    // Get adiantamentos stats
+    let adiantamentosQuery = db.select().from(adiantamentos);
+    if (colaboradorId) {
+      adiantamentosQuery = adiantamentosQuery.where(eq(adiantamentos.colaboradorId, colaboradorId)) as any;
+    }
+    const allAdiantamentos = await adiantamentosQuery;
+    const adiantamentosTotal = allAdiantamentos.length;
+    const adiantamentosValorTotal = allAdiantamentos.reduce(
+      (sum, a) => sum + parseFloat(a.valorSolicitado || "0"),
+      0
+    );
+
+    // Get reembolsos stats
+    let reembolsosQuery = db.select().from(reembolsos);
+    if (colaboradorId) {
+      reembolsosQuery = reembolsosQuery.where(eq(reembolsos.colaboradorId, colaboradorId)) as any;
+    }
+    const allReembolsos = await reembolsosQuery;
+    const reembolsosTotal = allReembolsos.length;
+    const reembolsosValorTotal = allReembolsos.reduce(
+      (sum, r) => sum + parseFloat(r.valorTotalSolicitado || "0"),
+      0
+    );
+
+    // Get viagens stats
+    let viagensQuery = db.select().from(viagensExecutadas);
+    if (colaboradorId) {
+      viagensQuery = viagensQuery.where(eq(viagensExecutadas.colaboradorId, colaboradorId)) as any;
+    }
+    const allViagens = await viagensQuery;
+    const viagensTotal = allViagens.length;
+
+    // Get passagens stats
+    let passagensQuery = db.select().from(passagensAereas);
+    if (colaboradorId) {
+      passagensQuery = passagensQuery.where(eq(passagensAereas.colaboradorId, colaboradorId)) as any;
+    }
+    const allPassagens = await passagensQuery;
+    const passagensTotal = allPassagens.length;
+
+    return {
+      adiantamentos: {
+        total: adiantamentosTotal,
+        valorTotal: adiantamentosValorTotal,
+      },
+      reembolsos: {
+        total: reembolsosTotal,
+        valorTotal: reembolsosValorTotal,
+      },
+      viagens: {
+        total: viagensTotal,
+      },
+      passagens: {
+        total: passagensTotal,
+      },
+    };
   }
 }
 

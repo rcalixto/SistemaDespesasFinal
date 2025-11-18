@@ -70,6 +70,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // DASHBOARD
+  // ============================================================================
+
+  app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador não encontrado" });
+      }
+
+      const stats = await storage.getDashboardStats(colaborador.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // ============================================================================
   // ADIANTAMENTOS
   // ============================================================================
 
