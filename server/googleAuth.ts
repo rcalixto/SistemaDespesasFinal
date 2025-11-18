@@ -33,16 +33,19 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  const callbackURL = process.env.NODE_ENV === "development" 
-    ? "http://localhost:5000/api/auth/google/callback"
-    : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`;
+  // Detectar URL base automaticamente
+  const getCallbackURL = (req: any) => {
+    const protocol = req.protocol || 'https';
+    const host = req.get('host') || 'localhost:5000';
+    return `${protocol}://${host}/api/auth/google/callback`;
+  };
 
   passport.use(
     new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        callbackURL,
+        callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN || 'localhost:5000'}/api/auth/google/callback`,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
