@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { UploadResult } from "@uppy/core";
 import {
   type Adiantamento,
   type PrestacaoAdiantamento,
@@ -18,7 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { FileText, Plus, Trash2, Upload } from "lucide-react";
+import { FileText, Plus, Trash2, Upload, Check, X } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 export default function PrestacaoAdiantamentos() {
   const [selectedAdiantamento, setSelectedAdiantamento] = useState<Adiantamento | null>(null);
@@ -171,7 +173,7 @@ function PrestacaoContasDialog({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [itens, setItens] = useState<Array<{ categoria: string; descricao: string; valor: string; comprovante?: File }>>([]);
+  const [itens, setItens] = useState<Array<{ categoria: string; descricao: string; valor: string; comprovante?: string }>>([]);
   const [observacoes, setObservacoes] = useState("");
   const { toast } = useToast();
 
@@ -201,6 +203,65 @@ function PrestacaoContasDialog({
       });
     },
   });
+
+  // Handler para obter URL de upload
+  const handleGetUploadUrl = async (index: number) => {
+    return async () => {
+      try {
+        const response = await fetch("/api/objects/upload", {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await response.json();
+        return {
+          method: "PUT" as const,
+          url: data.uploadURL,
+        };
+      } catch (error) {
+        toast({
+          title: "Erro ao preparar upload",
+          description: "Não foi possível obter URL de upload",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    };
+  };
+
+  // Handler após completar upload
+  const handleUploadComplete = (index: number) => {
+    return async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+      if (result.successful.length > 0) {
+        const uploadURL = result.successful[0].uploadURL;
+        
+        try {
+          // Definir ACL do comprovante
+          const response = await fetch("/api/comprovantes", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ comprovanteURL: uploadURL }),
+          });
+          
+          const data = await response.json();
+          
+          // Atualizar item com caminho do comprovante
+          updateItem(index, "comprovante", data.objectPath);
+          
+          toast({
+            title: "Comprovante anexado!",
+            description: "O arquivo foi enviado com sucesso.",
+          });
+        } catch (error) {
+          toast({
+            title: "Erro ao processar comprovante",
+            description: "O arquivo foi enviado mas houve erro ao processar",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+  };
 
   const addItem = () => {
     setItens([...itens, { categoria: CATEGORIAS_DESPESA[0], descricao: "", valor: "0" }]);
@@ -317,9 +378,10 @@ function PrestacaoContasDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">Categoria</TableHead>
+                    <TableHead className="w-[180px]">Categoria</TableHead>
                     <TableHead>Descrição</TableHead>
-                    <TableHead className="w-[150px]">Valor (R$)</TableHead>
+                    <TableHead className="w-[130px]">Valor (R$)</TableHead>
+                    <TableHead className="w-[150px]">Comprovante</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -360,6 +422,35 @@ function PrestacaoContasDialog({
                           onChange={(e) => updateItem(index, "valor", e.target.value)}
                           data-testid={`input-valor-${index}`}
                         />
+                      </TableCell>
+                      <TableCell>
+                        {item.comprovante ? (
+                          <div className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-green-600" />
+                            <span className="text-xs text-muted-foreground">Anexado</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => updateItem(index, "comprovante", undefined)}
+                              data-testid={`button-remove-comprovante-${index}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <ObjectUploader
+                            maxNumberOfFiles={1}
+                            maxFileSize={10485760}
+                            onGetUploadParameters={handleGetUploadUrl(index)}
+                            onComplete={handleUploadComplete(index)}
+                            buttonVariant="outline"
+                            buttonSize="sm"
+                            data-testid={`button-upload-${index}`}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Anexar
+                          </ObjectUploader>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Button
