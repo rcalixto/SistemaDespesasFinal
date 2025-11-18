@@ -70,6 +70,7 @@ export default function Passagens() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/passagens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Solicitação de passagem criada com sucesso!",

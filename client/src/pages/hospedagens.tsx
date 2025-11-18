@@ -70,6 +70,7 @@ export default function Hospedagens() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hospedagens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Solicitação de hospedagem criada com sucesso!",

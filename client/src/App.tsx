@@ -11,11 +11,11 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Adiantamentos from "@/pages/adiantamentos";
 import Reembolsos from "@/pages/reembolsos";
+import Passagens from "@/pages/passagens";
+import Hospedagens from "@/pages/hospedagens";
 import type { User } from "@shared/schema";
 
 // Placeholder pages for routes not yet implemented
-const Passagens = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Passagens Aéreas - Em breve</h1></div>;
-const Hospedagens = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Hospedagens - Em breve</h1></div>;
 const ViagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Viagens Executadas - Em breve</h1></div>;
 const HospedagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Hospedagens Executadas - Em breve</h1></div>;
 const PrestacaoAdiantamentos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Adiantamentos - Em breve</h1></div>;
