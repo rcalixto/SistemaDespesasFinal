@@ -50,7 +50,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const email = req.user.claims.email || "";
+      const firstName = req.user.claims.first_name || "";
+      const lastName = req.user.claims.last_name || "";
+      
+      // Auto-create or update user
+      const user = await storage.upsertUser({
+        id: userId,
+        email,
+        firstName,
+        lastName,
+      });
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -94,11 +105,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertAdiantamentoSchema.parse({
         ...req.body,
         colaboradorId: colaborador.id,
-        dataIda: req.body.dataIda,
-        dataVolta: req.body.dataVolta,
       });
 
-      const result = await storage.createAdiantamento(validated);
+      // Convert string dates to Date objects for database
+      const dataToInsert = {
+        ...validated,
+        dataIda: new Date(validated.dataIda),
+        dataVolta: new Date(validated.dataVolta),
+      };
+
+      const result = await storage.createAdiantamento(dataToInsert as any);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -295,7 +311,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         colaboradorId: colaborador.id,
       });
 
-      const result = await storage.createPassagemAerea(validated);
+      // Convert string dates to Date objects for database
+      const dataToInsert = {
+        ...validated,
+        dataIda: new Date(validated.dataIda),
+        dataVolta: validated.dataVolta ? new Date(validated.dataVolta) : undefined,
+      };
+
+      const result = await storage.createPassagemAerea(dataToInsert as any);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -380,7 +403,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         colaboradorId: colaborador.id,
       });
 
-      const result = await storage.createHospedagem(validated);
+      // Convert string dates to Date objects for database
+      const dataToInsert = {
+        ...validated,
+        dataCheckin: new Date(validated.dataCheckin),
+        dataCheckout: new Date(validated.dataCheckout),
+      };
+
+      const result = await storage.createHospedagem(dataToInsert as any);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -462,7 +492,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         colaboradorId: colaborador.id,
       });
 
-      const result = await storage.createViagemExecutada(validated);
+      // Convert string dates to Date objects for database
+      const dataToInsert = {
+        ...validated,
+        dataVoo: validated.dataVoo ? new Date(validated.dataVoo) : undefined,
+      };
+
+      const result = await storage.createViagemExecutada(dataToInsert as any);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -504,7 +540,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         colaboradorId: colaborador.id,
       });
 
-      const result = await storage.createHospedagemExecutada(validated);
+      // Convert string dates to Date objects for database
+      const dataToInsert = {
+        ...validated,
+        dataHospedagem: validated.dataHospedagem ? new Date(validated.dataHospedagem) : undefined,
+      };
+
+      const result = await storage.createHospedagemExecutada(dataToInsert as any);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -302,8 +302,11 @@ export const insertViagemExecutadaSchema = createInsertSchema(viagensExecutadas)
   id: true,
   emissao: true,
   createdAt: true,
+  dataPagamento: true,
 }).extend({
   dataVoo: z.string(),
+  objetivo: z.string().min(1, "Objetivo é obrigatório"),
+  trecho: z.string().min(1, "Trecho é obrigatório"),
   valorPassagem: z.number().positive(),
   taxaEmbarque: z.number().optional(),
   taxaAgencia: z.number().optional(),
@@ -344,8 +347,11 @@ export const insertHospedagemExecutadaSchema = createInsertSchema(hospedagensExe
   id: true,
   emissao: true,
   createdAt: true,
+  dataPagamento: true,
 }).extend({
   dataHospedagem: z.string(),
+  objetivo: z.string().min(1, "Objetivo é obrigatório"),
+  hotel: z.string().min(1, "Hotel é obrigatório"),
   valorDiaria: z.number().positive(),
   cafe: z.number().optional(),
   taxa: z.number().optional(),

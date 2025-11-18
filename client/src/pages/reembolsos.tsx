@@ -32,10 +32,9 @@ import type { Reembolso } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  
   motivo: z.string().min(1, "Motivo é obrigatório"),
   centroCusto: z.string().optional(),
-  valorTotalSolicitado: z.number().positive("Valor deve ser maior que zero"),
+  valorTotalSolicitado: z.coerce.number().positive("Valor deve ser maior que zero"),
   observacoes: z.string().optional(),
 });
 

@@ -36,7 +36,7 @@ const formSchema = z.object({
   motivo: z.string().min(1, "Motivo é obrigatório"),
   dataIda: z.string().min(1, "Data de ida é obrigatória"),
   dataVolta: z.string().min(1, "Data de volta é obrigatória"),
-  valorSolicitado: z.number().positive("Valor deve ser maior que zero"),
+  valorSolicitado: z.coerce.number().positive("Valor deve ser maior que zero"),
   diretoriaResponsavel: z.string().min(1, "Diretoria é obrigatória"),
   observacoes: z.string().optional(),
 });
