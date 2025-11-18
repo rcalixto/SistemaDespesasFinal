@@ -8,6 +8,7 @@ import {
   prestacaoAdiantamentoItens,
   reembolsos,
   prestacaoReembolso,
+  prestacaoReembolsoItens,
   passagensAereas,
   hospedagens,
   viagensExecutadas,
@@ -28,6 +29,8 @@ import {
   type InsertReembolso,
   type PrestacaoReembolso,
   type InsertPrestacaoReembolso,
+  type PrestacaoReembolsoItem,
+  type InsertPrestacaoReembolsoItem,
   type PassagemAerea,
   type InsertPassagemAerea,
   type Hospedagem,
@@ -440,6 +443,61 @@ export class DatabaseStorage implements IStorage {
       .where(eq(prestacaoReembolso.id, id))
       .returning();
     return result[0];
+  }
+
+  // Create prestação with itens in a single transaction
+  async createPrestacaoReembolsoWithItens(
+    prestacaoData: InsertPrestacaoReembolso,
+    itens: InsertPrestacaoReembolsoItem[]
+  ): Promise<{ prestacao: PrestacaoReembolso; itens: PrestacaoReembolsoItem[] }> {
+    return await db.transaction(async (tx) => {
+      // Create prestação
+      const [prestacao] = await tx.insert(prestacaoReembolso).values(prestacaoData).returning();
+      
+      // Create itens if provided
+      const createdItens: PrestacaoReembolsoItem[] = [];
+      if (itens && itens.length > 0) {
+        for (const item of itens) {
+          const [createdItem] = await tx
+            .insert(prestacaoReembolsoItens)
+            .values({ ...item, prestacaoReembolsoId: prestacao.id })
+            .returning();
+          createdItens.push(createdItem);
+        }
+      }
+      
+      return { prestacao, itens: createdItens };
+    });
+  }
+
+  // ============================================================================
+  // ITENS DE DESPESA DA PRESTAÇÃO DE REEMBOLSO
+  // ============================================================================
+
+  async getPrestacaoReembolsoItens(prestacaoReembolsoId: number): Promise<PrestacaoReembolsoItem[]> {
+    return await db
+      .select()
+      .from(prestacaoReembolsoItens)
+      .where(eq(prestacaoReembolsoItens.prestacaoReembolsoId, prestacaoReembolsoId))
+      .orderBy(prestacaoReembolsoItens.id);
+  }
+
+  async createPrestacaoReembolsoItem(data: InsertPrestacaoReembolsoItem): Promise<PrestacaoReembolsoItem> {
+    const result = await db.insert(prestacaoReembolsoItens).values(data).returning();
+    return result[0];
+  }
+
+  async updatePrestacaoReembolsoItem(id: number, data: Partial<PrestacaoReembolsoItem>): Promise<PrestacaoReembolsoItem | undefined> {
+    const result = await db
+      .update(prestacaoReembolsoItens)
+      .set(data)
+      .where(eq(prestacaoReembolsoItens.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deletePrestacaoReembolsoItem(id: number): Promise<void> {
+    await db.delete(prestacaoReembolsoItens).where(eq(prestacaoReembolsoItens.id, id));
   }
 
   // ============================================================================

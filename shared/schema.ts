@@ -250,6 +250,30 @@ export type InsertPrestacaoReembolso = z.infer<typeof insertPrestacaoReembolsoSc
 export type PrestacaoReembolso = typeof prestacaoReembolso.$inferSelect;
 
 // ====================================================================
+// ITENS DE DESPESA DA PRESTAÇÃO DE REEMBOLSO
+// ====================================================================
+
+export const prestacaoReembolsoItens = pgTable("prestacao_reembolso_itens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  prestacaoReembolsoId: integer("prestacao_reembolso_id").notNull().references(() => prestacaoReembolso.id, { onDelete: 'cascade' }),
+  categoria: varchar("categoria", { length: 100 }).notNull(),
+  descricao: text("descricao"),
+  valor: decimal("valor", { precision: 10, scale: 2 }).notNull(),
+  comprovante: varchar("comprovante", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPrestacaoReembolsoItemSchema = createInsertSchema(prestacaoReembolsoItens).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  valor: z.number().positive(),
+});
+
+export type InsertPrestacaoReembolsoItem = z.infer<typeof insertPrestacaoReembolsoItemSchema>;
+export type PrestacaoReembolsoItem = typeof prestacaoReembolsoItens.$inferSelect;
+
+// ====================================================================
 // PASSAGENS AÉREAS (Flight Tickets)
 // ====================================================================
 

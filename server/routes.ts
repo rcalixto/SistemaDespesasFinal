@@ -794,15 +794,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PRESTAÇÃO DE REEMBOLSO
   // ============================================================================
 
+  app.get("/api/prestacao-reembolso/by-reembolso/:reembolsoId", isAuthenticated, async (req, res) => {
+    try {
+      const reembolsoId = parseInt(req.params.reembolsoId);
+      const prestacao = await storage.getPrestacaoReembolsoByReembolsoId(reembolsoId);
+      if (!prestacao) {
+        return res.status(404).json({ message: "Prestação not found" });
+      }
+      res.json(prestacao);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.post("/api/prestacao-reembolso", isAuthenticated, async (req, res) => {
     try {
-      const validated = insertPrestacaoReembolsoSchema.parse(req.body);
-      const result = await storage.createPrestacaoReembolso(validated);
+      // Extract itens from request body
+      const { itens, ...prestacaoData } = req.body;
+      
+      // Validate prestação data
+      const validated = insertPrestacaoReembolsoSchema.parse(prestacaoData);
+      
+      // Validate itens if provided
+      const validatedItens: InsertPrestacaoReembolsoItem[] = [];
+      if (itens && Array.isArray(itens) && itens.length > 0) {
+        for (const item of itens) {
+          // Parse without prestacaoReembolsoId (will be added by storage)
+          const { prestacaoReembolsoId, ...itemData } = item;
+          const validatedItem = insertPrestacaoReembolsoItemSchema
+            .omit({ prestacaoReembolsoId: true })
+            .parse(itemData);
+          validatedItens.push(validatedItem as InsertPrestacaoReembolsoItem);
+        }
+      }
+      
+      // Create prestação and itens in a transaction
+      const result = await storage.createPrestacaoReembolsoWithItens(validated, validatedItens);
+      
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // ============================================================================
+  // ITENS DE DESPESA DA PRESTAÇÃO DE REEMBOLSO
+  // ============================================================================
+
+  // GET all itens de despesa for a prestação
+  app.get("/api/prestacao-reembolso/:id/itens", isAuthenticated, async (req, res) => {
+    try {
+      const prestacaoId = parseInt(req.params.id);
+      const itens = await storage.getPrestacaoReembolsoItens(prestacaoId);
+      res.json(itens);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // POST create new item de despesa
+  app.post("/api/prestacao-reembolso/:id/itens", isAuthenticated, async (req, res) => {
+    try {
+      const prestacaoId = parseInt(req.params.id);
+      const validated = insertPrestacaoReembolsoItemSchema.parse({
+        ...req.body,
+        prestacaoReembolsoId: prestacaoId,
+      });
+      const result = await storage.createPrestacaoReembolsoItem(validated);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // PATCH update item de despesa
+  app.patch("/api/prestacao-reembolso/itens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const result = await storage.updatePrestacaoReembolsoItem(itemId, req.body);
+      if (!result) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // DELETE item de despesa
+  app.delete("/api/prestacao-reembolso/itens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      await storage.deletePrestacaoReembolsoItem(itemId);
+      res.json({ message: "Item deleted successfully" });
+    } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   });
