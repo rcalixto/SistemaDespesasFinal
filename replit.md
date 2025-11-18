@@ -18,11 +18,17 @@ Preferred communication style: Simple, everyday language.
 
 **UI Component Library**: Shadcn UI (built on Radix UI primitives) - chosen for corporate application requirements emphasizing information clarity, workflow efficiency, and professional appearance. The "New York" style variant is configured for a more refined, density-focused design suitable for data-heavy interfaces.
 
-**Design System**: 
-- Typography: Inter font family (Google Fonts) with systematic hierarchy from page headers (2xl-4xl) down to table data (sm)
-- Color Palette: Custom HSL-based color system with semantic naming (primary, secondary, muted, accent, destructive, success, warning) supporting light mode corporate branding
-- Layout: Tailwind-based spacing units (2, 4, 6, 8, 12, 16) with responsive grid patterns and max-width containers
-- Component Density: Optimized for data-dense presentations while maintaining clarity
+**Design System (ABERT Brand)**: 
+- Typography: Inter font family (Google Fonts) with systematic hierarchy - titles (2.5rem/40px) to body text (1rem/16px)
+- Color Palette: Custom ABERT brand colors
+  - Primary: --abert-blue (#004650) with variants (blue80, blue60, blue40, blue20)
+  - Accent: --abert-yellow (#FFC828) for highlights and CTAs
+  - Neutrals: Gray scale (gray80 #4A5458 to gray20 #ECEFF0)
+  - Background: --abert-bg (#F5F8FC) light blue-gray
+  - Surface: --abert-surface (#FFFFFF) pure white
+- Components: Custom ABERT classes (.abert-card, .abert-input, .btn-abert) with 16px border radius for cards, 10px for inputs
+- Status Badges: Color-coded (aprovado/green, rejeitado/red, emanalise/yellow, pendente/blue) with 20px border radius
+- Dialogs: Clean white dialogs with 20px border radius, subtle shadows, and ABERT blue labels
 
 **State Management**: TanStack Query (React Query) for server state with configured query client that:
 - Disables automatic refetching to reduce server load
