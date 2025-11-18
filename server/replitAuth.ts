@@ -102,18 +102,21 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    const hostname = req.hostname || req.get('host') || 'localhost';
-    console.log(`[Auth] Login attempt - hostname: ${hostname}`);
-    ensureStrategy(hostname);
-    passport.authenticate(`replitauth:${hostname}`, {
+    // Get the full host including port from the Host header
+    const host = req.get('host') || req.hostname || 'localhost';
+    console.log(`[Auth] Login attempt - host: ${host}, hostname: ${req.hostname}, headers:`, req.headers);
+    ensureStrategy(host);
+    passport.authenticate(`replitauth:${host}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const host = req.get('host') || req.hostname || 'localhost';
+    console.log(`[Auth] Callback - host: ${host}`);
+    ensureStrategy(host);
+    passport.authenticate(`replitauth:${host}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
