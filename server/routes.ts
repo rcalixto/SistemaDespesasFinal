@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./googleAuth";
 import {
   insertAdiantamentoSchema,
   insertReembolsoSchema,
@@ -17,25 +17,9 @@ import {
 // Helper to get current colaborador for logged-in user
 async function getCurrentColaborador(req: Request) {
   const user = req.user as any;
-  if (!user?.claims?.sub) return null;
+  if (!user?.id) return null;
   
-  const userId = user.claims.sub;
-  let colaborador = await storage.getColaboradorByUserId(userId);
-  
-  // Auto-create colaborador if doesn't exist
-  if (!colaborador && user.claims) {
-    const firstName = user.claims.first_name || "";
-    const lastName = user.claims.last_name || "";
-    const email = user.claims.email || "";
-    
-    colaborador = await storage.createColaborador({
-      userId,
-      nome: `${firstName} ${lastName}`.trim() || email || "Colaborador",
-      email,
-      ativo: true,
-    });
-  }
-  
+  const colaborador = await storage.getColaboradorByUserId(user.id);
   return colaborador;
 }
 
@@ -46,28 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   await setupAuth(app);
 
-  // Get current user info
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const email = req.user.claims.email || "";
-      const firstName = req.user.claims.first_name || "";
-      const lastName = req.user.claims.last_name || "";
-      
-      // Auto-create or update user
-      const user = await storage.upsertUser({
-        id: userId,
-        email,
-        firstName,
-        lastName,
-      });
-      
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Note: /api/auth/user is now handled in googleAuth.ts
 
   // ============================================================================
   // DASHBOARD
