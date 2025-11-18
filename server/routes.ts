@@ -14,6 +14,9 @@ import {
   insertPrestacaoAdiantamentoItemSchema,
   insertPrestacaoReembolsoSchema,
 } from "@shared/schema";
+// Referenced from: blueprint:javascript_object_storage
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 
 // Helper to get current colaborador for logged-in user
 async function getCurrentColaborador(req: Request) {
