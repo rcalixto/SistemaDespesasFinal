@@ -50,16 +50,9 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
-  const email = claims["email"];
-  
-  // Validação: apenas emails @abert.org.br
-  if (email && !email.endsWith("@abert.org.br")) {
-    throw new Error("Acesso permitido apenas para contas @abert.org.br");
-  }
-  
   await storage.upsertUser({
     id: claims["sub"],
-    email,
+    email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
@@ -78,10 +71,37 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const claims = tokens.claims();
+      const email = claims["email"];
+      const userId = claims["sub"];
+      
+      // Validação estrita: email obrigatório e apenas @abert.org.br
+      if (!email) {
+        console.warn("[Auth] Login rejeitado: email ausente nos claims");
+        return verified(new Error("Acesso permitido apenas para contas @abert.org.br"), false);
+      }
+      
+      // Normalizar email para lowercase antes da validação
+      const normalizedEmail = email.toLowerCase().trim();
+      if (!normalizedEmail.endsWith("@abert.org.br")) {
+        console.log(`[Auth] Login rejeitado: ${normalizedEmail} não é domínio @abert.org.br`);
+        return verified(new Error("Acesso permitido apenas para contas @abert.org.br"), false);
+      }
+      
+      if (!userId) {
+        console.warn("[Auth] Login rejeitado: user ID ausente nos claims");
+        return verified(new Error("Erro de autenticação: identificador ausente"), false);
+      }
+      
+      const user = { id: userId };
+      updateUserSession(user, tokens);
+      await upsertUser(claims);
+      verified(null, user);
+    } catch (error) {
+      console.error("[Auth] Erro durante verificação:", error);
+      verified(error as Error, false);
+    }
   };
 
   const registeredStrategies = new Set<string>();
@@ -123,9 +143,23 @@ export async function setupAuth(app: Express) {
     const host = req.get('host') || req.hostname || 'localhost';
     console.log(`[Auth] Callback - host: ${host}`);
     ensureStrategy(host);
-    passport.authenticate(`replitauth:${host}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${host}`, (err: Error | null, user: any, info: any) => {
+      if (err) {
+        console.error("[Auth] Callback error:", err.message);
+        return res.redirect("/auth-error?message=" + encodeURIComponent(err.message));
+      }
+      if (!user) {
+        console.log("[Auth] Callback: user authentication failed");
+        return res.redirect("/auth-error?message=Acesso%20permitido%20apenas%20para%20contas%20@abert.org.br");
+      }
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("[Auth] Login error:", loginErr);
+          return res.redirect("/auth-error?message=" + encodeURIComponent(loginErr.message));
+        }
+        console.log("[Auth] Login successful, redirecting to /");
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 

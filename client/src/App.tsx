@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import AuthError from "@/pages/auth-error";
 import Home from "@/pages/home";
 import Adiantamentos from "@/pages/adiantamentos";
 import Reembolsos from "@/pages/reembolsos";
@@ -88,7 +89,12 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthChecker />
+        <Switch>
+          <Route path="/auth-error" component={AuthError} />
+          <Route>
+            <AuthChecker />
+          </Route>
+        </Switch>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
