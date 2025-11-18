@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 
 export default function Landing() {
   const handleLogin = () => {
-    // Força abertura em top-level window (não em iframe)
-    window.top!.location.href = "/api/login";
+    // Redireciona normalmente
+    window.location.href = "/api/login";
   };
 
   return (
