@@ -5,6 +5,7 @@ import {
   colaboradorRoles,
   adiantamentos,
   prestacaoAdiantamento,
+  prestacaoAdiantamentoItens,
   reembolsos,
   prestacaoReembolso,
   passagensAereas,
@@ -21,6 +22,8 @@ import {
   type InsertAdiantamento,
   type PrestacaoAdiantamento,
   type InsertPrestacaoAdiantamento,
+  type PrestacaoAdiantamentoItem,
+  type InsertPrestacaoAdiantamentoItem,
   type Reembolso,
   type InsertReembolso,
   type PrestacaoReembolso,
@@ -69,6 +72,12 @@ export interface IStorage {
   getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId: number): Promise<PrestacaoAdiantamento | undefined>;
   createPrestacaoAdiantamento(data: InsertPrestacaoAdiantamento): Promise<PrestacaoAdiantamento>;
   updatePrestacaoAdiantamento(id: number, data: Partial<PrestacaoAdiantamento>): Promise<PrestacaoAdiantamento | undefined>;
+
+  // Itens de Despesa da Prestação de Adiantamento
+  getPrestacaoAdiantamentoItens(prestacaoAdiantamentoId: number): Promise<PrestacaoAdiantamentoItem[]>;
+  createPrestacaoAdiantamentoItem(data: InsertPrestacaoAdiantamentoItem): Promise<PrestacaoAdiantamentoItem>;
+  updatePrestacaoAdiantamentoItem(id: number, data: Partial<PrestacaoAdiantamentoItem>): Promise<PrestacaoAdiantamentoItem | undefined>;
+  deletePrestacaoAdiantamentoItem(id: number): Promise<void>;
 
   // Reembolsos
   getReembolsos(filters?: {
@@ -294,6 +303,36 @@ export class DatabaseStorage implements IStorage {
       .where(eq(prestacaoAdiantamento.id, id))
       .returning();
     return result[0];
+  }
+
+  // ============================================================================
+  // ITENS DE DESPESA DA PRESTAÇÃO DE ADIANTAMENTO
+  // ============================================================================
+
+  async getPrestacaoAdiantamentoItens(prestacaoAdiantamentoId: number): Promise<PrestacaoAdiantamentoItem[]> {
+    return await db
+      .select()
+      .from(prestacaoAdiantamentoItens)
+      .where(eq(prestacaoAdiantamentoItens.prestacaoAdiantamentoId, prestacaoAdiantamentoId))
+      .orderBy(prestacaoAdiantamentoItens.id);
+  }
+
+  async createPrestacaoAdiantamentoItem(data: InsertPrestacaoAdiantamentoItem): Promise<PrestacaoAdiantamentoItem> {
+    const result = await db.insert(prestacaoAdiantamentoItens).values(data).returning();
+    return result[0];
+  }
+
+  async updatePrestacaoAdiantamentoItem(id: number, data: Partial<PrestacaoAdiantamentoItem>): Promise<PrestacaoAdiantamentoItem | undefined> {
+    const result = await db
+      .update(prestacaoAdiantamentoItens)
+      .set(data)
+      .where(eq(prestacaoAdiantamentoItens.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deletePrestacaoAdiantamentoItem(id: number): Promise<void> {
+    await db.delete(prestacaoAdiantamentoItens).where(eq(prestacaoAdiantamentoItens.id, id));
   }
 
   // ============================================================================

@@ -144,6 +144,46 @@ export type InsertPrestacaoAdiantamento = z.infer<typeof insertPrestacaoAdiantam
 export type PrestacaoAdiantamento = typeof prestacaoAdiantamento.$inferSelect;
 
 // ====================================================================
+// ITENS DE DESPESA DA PRESTAÇÃO DE ADIANTAMENTO
+// ====================================================================
+
+export const prestacaoAdiantamentoItens = pgTable("prestacao_adiantamento_itens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  prestacaoAdiantamentoId: integer("prestacao_adiantamento_id").notNull().references(() => prestacaoAdiantamento.id, { onDelete: 'cascade' }),
+  categoria: varchar("categoria", { length: 100 }).notNull(),
+  descricao: text("descricao"),
+  valor: decimal("valor", { precision: 10, scale: 2 }).notNull(),
+  comprovante: varchar("comprovante", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPrestacaoAdiantamentoItemSchema = createInsertSchema(prestacaoAdiantamentoItens).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  valor: z.number().positive(),
+});
+
+export type InsertPrestacaoAdiantamentoItem = z.infer<typeof insertPrestacaoAdiantamentoItemSchema>;
+export type PrestacaoAdiantamentoItem = typeof prestacaoAdiantamentoItens.$inferSelect;
+
+// Categorias de despesa predefinidas
+export const CATEGORIAS_DESPESA = [
+  'Alimentação',
+  'Business Center',
+  'Combustível',
+  'Estacionamento',
+  'Fotocópias',
+  'Hospedagem',
+  'Passagem Internacional',
+  'Táxi',
+  'Telefone',
+  'Outros',
+] as const;
+
+export type CategoriaDespesa = typeof CATEGORIAS_DESPESA[number];
+
+// ====================================================================
 // REEMBOLSOS (Reimbursements)
 // ====================================================================
 
