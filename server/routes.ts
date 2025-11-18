@@ -30,7 +30,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   await setupAuth(app);
 
-  // Note: /api/auth/user is now handled in googleAuth.ts
+  // Note: /api/auth/user is now handled in replitAuth.ts
+  
+  // ============================================================================
+  // DESENVOLVIMENTO - Login de teste (REMOVER EM PRODUÇÃO)
+  // ============================================================================
+  
+  app.get("/api/login-test", async (req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).send("Not found");
+    }
+    
+    const testUser = {
+      id: "test-user-abert-123",
+      claims: {
+        sub: "test-user-abert-123",
+        email: "teste@abert.org.br",
+        first_name: "João",
+        last_name: "Silva Teste",
+        profile_image_url: "https://ui-avatars.com/api/?name=Joao+Silva&background=004650&color=FFC828",
+      },
+    };
+    
+    req.login(testUser, (err) => {
+      if (err) {
+        console.error("[Test Login] Error:", err);
+        return res.status(500).send("Erro ao criar sessão de teste");
+      }
+      console.log("[Test Login] Sessão criada para usuário de teste");
+      res.redirect("/");
+    });
+  });
 
   // ============================================================================
   // DASHBOARD
