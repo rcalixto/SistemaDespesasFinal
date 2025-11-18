@@ -65,7 +65,7 @@ export function Filters({
   const updateFilter = (key: keyof FilterValues, value: string) => {
     const newFilters = {
       ...filters,
-      [key]: value || undefined,
+      [key]: (value === "all" || !value) ? undefined : value,
     };
     setFilters(newFilters);
     onFilterChange(newFilters);
@@ -133,14 +133,14 @@ export function Filters({
               <div className="space-y-2">
                 <Label htmlFor="diretoria">Diretoria</Label>
                 <Select
-                  value={filters.diretoria || ""}
+                  value={filters.diretoria || "all"}
                   onValueChange={(value) => updateFilter("diretoria", value)}
                 >
                   <SelectTrigger id="diretoria" data-testid="filter-diretoria">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas</SelectItem>
+                    <SelectItem value="all">Todas</SelectItem>
                     {diretorias.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
@@ -168,14 +168,14 @@ export function Filters({
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
-                  value={filters.status || ""}
+                  value={filters.status || "all"}
                   onValueChange={(value) => updateFilter("status", value)}
                 >
                   <SelectTrigger id="status" data-testid="filter-status">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     {statusOptions.map((s) => (
                       <SelectItem key={s} value={s}>
                         {s}
