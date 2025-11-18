@@ -16,10 +16,10 @@ import Passagens from "@/pages/passagens";
 import Hospedagens from "@/pages/hospedagens";
 import ViagensExecutadas from "@/pages/viagens-executadas";
 import HospedagensExecutadas from "@/pages/hospedagens-executadas";
+import PrestacaoAdiantamentos from "@/pages/prestacao-adiantamentos";
 import type { User } from "@shared/schema";
 
 // Placeholder pages for routes not yet implemented
-const PrestacaoAdiantamentos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Adiantamentos - Em breve</h1></div>;
 const PrestacaoReembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Reembolsos - Em breve</h1></div>;
 
 function AuthenticatedRouter() {
