@@ -88,7 +88,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 border-b">
         <div className="flex flex-col items-center gap-2">
           <img
-            src="/logo-abert.svg"
+            src="/logo-abert-sidebar.svg"
             alt="ABERT"
             className="h-16 w-auto"
             data-testid="logo-abert-sidebar"
