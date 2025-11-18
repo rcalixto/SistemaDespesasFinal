@@ -319,6 +319,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/passagens/:id/approve-financeiro", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updatePassagemAerea(id, {
+        status: "Emitido",
+        dataEmissao: new Date(),
+        formaPagamento: req.body.formaPagamento,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.post("/api/passagens/:id/reject", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -380,6 +395,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updated = await storage.updateHospedagem(id, {
         status: "AprovadoDiretoria",
+      });
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.post("/api/hospedagens/:id/approve-financeiro", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateHospedagem(id, {
+        status: "Confirmado",
+        formaPagamento: req.body.formaPagamento,
       });
 
       res.json(updated);

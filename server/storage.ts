@@ -2,6 +2,7 @@ import { db } from "./db";
 import {
   users,
   colaboradores,
+  colaboradorRoles,
   adiantamentos,
   prestacaoAdiantamento,
   reembolsos,
@@ -14,6 +15,8 @@ import {
   type UpsertUser,
   type Colaborador,
   type InsertColaborador,
+  type ColaboradorRole,
+  type InsertColaboradorRole,
   type Adiantamento,
   type InsertAdiantamento,
   type PrestacaoAdiantamento,
@@ -44,6 +47,11 @@ export interface IStorage {
   getColaboradorByUserId(userId: string): Promise<Colaborador | undefined>;
   createColaborador(data: InsertColaborador): Promise<Colaborador>;
   updateColaborador(id: number, data: Partial<InsertColaborador>): Promise<Colaborador | undefined>;
+
+  // Roles
+  getColaboradorRoles(colaboradorId: number): Promise<ColaboradorRole[]>;
+  addColaboradorRole(data: InsertColaboradorRole): Promise<ColaboradorRole>;
+  removeColaboradorRole(id: number): Promise<void>;
 
   // Adiantamentos
   getAdiantamentos(filters?: {
@@ -179,6 +187,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(colaboradores.id, id))
       .returning();
     return result[0];
+  }
+
+  // ============================================================================
+  // ROLES
+  // ============================================================================
+
+  async getColaboradorRoles(colaboradorId: number): Promise<ColaboradorRole[]> {
+    return await db.select().from(colaboradorRoles).where(eq(colaboradorRoles.colaboradorId, colaboradorId));
+  }
+
+  async addColaboradorRole(data: InsertColaboradorRole): Promise<ColaboradorRole> {
+    const result = await db.insert(colaboradorRoles).values(data).returning();
+    return result[0];
+  }
+
+  async removeColaboradorRole(id: number): Promise<void> {
+    await db.delete(colaboradorRoles).where(eq(colaboradorRoles.id, id));
   }
 
   // ============================================================================
