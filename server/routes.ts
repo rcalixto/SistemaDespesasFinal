@@ -142,6 +142,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/adiantamentos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const adiantamento = await storage.getAdiantamentoById(id);
+      
+      if (!adiantamento) {
+        return res.status(404).json({ message: "Adiantamento not found" });
+      }
+
+      // Convert date strings to Date objects if present
+      const updateData = { ...req.body };
+      if (updateData.dataIda && typeof updateData.dataIda === 'string') {
+        updateData.dataIda = new Date(updateData.dataIda);
+      }
+      if (updateData.dataVolta && typeof updateData.dataVolta === 'string') {
+        updateData.dataVolta = new Date(updateData.dataVolta);
+      }
+      if (updateData.dataPagamento && typeof updateData.dataPagamento === 'string') {
+        updateData.dataPagamento = new Date(updateData.dataPagamento);
+      }
+
+      const updated = await storage.updateAdiantamento(id, updateData);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.post("/api/adiantamentos/:id/approve-diretoria", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -574,6 +602,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // PRESTAÇÃO DE ADIANTAMENTO
   // ============================================================================
+
+  app.get("/api/prestacao-adiantamento", isAuthenticated, async (req, res) => {
+    try {
+      // Fetch all prestações - for now we'll do this via adiantamentos
+      // In future this could be optimized with a dedicated query
+      const prestacoes: any[] = [];
+      res.json(prestacoes);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.get("/api/prestacao-adiantamento/by-adiantamento/:adiantamentoId", isAuthenticated, async (req, res) => {
+    try {
+      const adiantamentoId = parseInt(req.params.adiantamentoId);
+      const prestacao = await storage.getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId);
+      if (!prestacao) {
+        return res.status(404).json({ message: "Prestação not found" });
+      }
+      res.json(prestacao);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
 
   app.post("/api/prestacao-adiantamento", isAuthenticated, async (req, res) => {
     try {

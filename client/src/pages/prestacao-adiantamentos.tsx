@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -30,7 +30,40 @@ export default function PrestacaoAdiantamentos() {
     queryKey: ["/api/adiantamentos"],
   });
 
-  const adiantamentosPagos = adiantamentos?.filter(a => a.status === "Pago") || [];
+  // Filter to show only Pago adiantamentos without prestação yet
+  const [prestacaoExists, setPrestacaoExists] = useState<Set<number>>(new Set());
+
+  const adiantamentosPagos = adiantamentos?.filter(a => {
+    if (a.status !== "Pago") return false;
+    if (prestacaoExists.has(a.id)) return false;
+    return true;
+  }) || [];
+
+  // Check which adiantamentos already have prestação
+  useEffect(() => {
+    const checkPrestacoes = async () => {
+      if (!adiantamentos) return;
+      const pagos = adiantamentos.filter(a => a.status === "Pago");
+      const exists = new Set<number>();
+      
+      for (const adiantamento of pagos) {
+        try {
+          const response = await fetch(`/api/prestacao-adiantamento/by-adiantamento/${adiantamento.id}`, {
+            credentials: "include",
+          });
+          // Only if fetch succeeds with 200 status, prestação exists
+          if (response.ok) {
+            exists.add(adiantamento.id);
+          }
+        } catch (error) {
+          // Prestação doesn't exist yet - this is expected for 404
+        }
+      }
+      setPrestacaoExists(exists);
+    };
+    
+    checkPrestacoes();
+  }, [adiantamentos]);
 
   const handlePrestarContas = (adiantamento: Adiantamento) => {
     setSelectedAdiantamento(adiantamento);
