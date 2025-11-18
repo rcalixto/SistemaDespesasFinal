@@ -50,9 +50,16 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
+  const email = claims["email"];
+  
+  // Validação: apenas emails @abert.org.br
+  if (email && !email.endsWith("@abert.org.br")) {
+    throw new Error("Acesso permitido apenas para contas @abert.org.br");
+  }
+  
   await storage.upsertUser({
     id: claims["sub"],
-    email: claims["email"],
+    email,
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],

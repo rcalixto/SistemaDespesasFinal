@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./googleAuth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertAdiantamentoSchema,
   insertReembolsoSchema,
