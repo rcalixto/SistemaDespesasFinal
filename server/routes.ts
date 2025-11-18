@@ -366,8 +366,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updated = await storage.updatePassagemAerea(id, {
         status: "Emitido",
-        dataEmissao: new Date(),
-        formaPagamento: req.body.formaPagamento,
       });
 
       res.json(updated);
@@ -457,7 +455,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updated = await storage.updateHospedagem(id, {
         status: "Confirmado",
-        formaPagamento: req.body.formaPagamento,
       });
 
       res.json(updated);
