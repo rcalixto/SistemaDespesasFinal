@@ -19,35 +19,6 @@
 
   --abert-bg: #F5F8FC;
   --abert-surface: #FFFFFF;
-
-  /* Mapeamento para sistema shadcn */
-  --background: 210 40% 98%;
-  --foreground: 195 15% 30%;
-  --card: 0 0% 100%;
-  --card-foreground: 195 15% 30%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 195 15% 30%;
-  --primary: 187 100% 16%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 15% 90%;
-  --secondary-foreground: 195 15% 30%;
-  --muted: 210 20% 95%;
-  --muted-foreground: 195 10% 45%;
-  --accent: 45 100% 58%;
-  --accent-foreground: 195 20% 20%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 210 20% 88%;
-  --input: 210 20% 88%;
-  --ring: 187 100% 16%;
-  --radius: 0.625rem;
-
-  /* Elevation system */
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
-  --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
 }
 
 /* BASE */
@@ -139,14 +110,12 @@ body {
   background: #e0e7ff;
   color: #3730a3;
 }
-
 /* Overlay clean ABERT */
 .radix-dialog-overlay,
 [data-radix-overlay] {
   background: rgba(0, 0, 0, 0.35) !important;
   backdrop-filter: blur(2px);
 }
-
 /* ===== PADRÃO CLEAN ABERT PARA TODOS OS DIALOGS ===== */
 
 /* Conteúdo do Dialog – sempre fundo branco */
@@ -180,88 +149,4 @@ body {
 [data-radix-dialog-content] label {
   color: var(--abert-blue) !important;
   font-weight: 600 !important;
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply font-sans antialiased;
-  }
-}
-
-/**
- * Elevation utilities for hover/active states
- */
-@layer utilities {
-  input[type="search"]::-webkit-search-cancel-button {
-    @apply hidden;
-  }
-
-  [contenteditable][data-placeholder]:empty::before {
-    content: attr(data-placeholder);
-    color: hsl(var(--muted-foreground));
-    pointer-events: none;
-  }
-
-  .no-default-hover-elevate {}
-  .no-default-active-elevate {}
-
-  .toggle-elevate::before,
-  .toggle-elevate-2::before {
-    content: "";
-    pointer-events: none;
-    position: absolute;
-    inset: 0px;
-    border-radius: inherit;
-    z-index: -1;
-  }
-
-  .toggle-elevate.toggle-elevated::before {
-    background-color: var(--elevate-2);
-  }
-
-  .border.toggle-elevate::before {
-    inset: -1px;
-  }
-
-  .hover-elevate:not(.no-default-hover-elevate),
-  .active-elevate:not(.no-default-active-elevate),
-  .hover-elevate-2:not(.no-default-hover-elevate),
-  .active-elevate-2:not(.no-default-active-elevate) {
-    position: relative;
-    z-index: 0;
-  }
-
-  .hover-elevate:not(.no-default-hover-elevate)::after,
-  .active-elevate:not(.no-default-active-elevate)::after,
-  .hover-elevate-2:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:not(.no-default-active-elevate)::after {
-    content: "";
-    pointer-events: none;
-    position: absolute;
-    inset: 0px;
-    border-radius: inherit;
-    z-index: 999;
-  }
-
-  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-1);
-  }
-
-  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-2);
-  }
-
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
-    inset: -1px;
-  }
 }

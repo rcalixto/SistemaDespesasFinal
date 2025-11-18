@@ -62,6 +62,7 @@ export const colaboradores = pgTable("colaboradores", {
 
 export const insertColaboradorSchema = createInsertSchema(colaboradores).omit({
   id: true,
+  ativo: true,
   createdAt: true,
 });
 
@@ -96,6 +97,9 @@ export const adiantamentos = pgTable("adiantamentos", {
 export const insertAdiantamentoSchema = createInsertSchema(adiantamentos).omit({
   id: true,
   dataSolicitacao: true,
+  aprovacaoDiretoria: true,
+  aprovacaoFinanceiro: true,
+  dataPagamento: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -164,6 +168,9 @@ export const reembolsos = pgTable("reembolsos", {
 export const insertReembolsoSchema = createInsertSchema(reembolsos).omit({
   id: true,
   dataSolicitacao: true,
+  aprovacaoDiretoria: true,
+  aprovacaoFinanceiro: true,
+  dataPagamento: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -227,6 +234,8 @@ export const passagensAereas = pgTable("passagens_aereas", {
 export const insertPassagemAereaSchema = createInsertSchema(passagensAereas).omit({
   id: true,
   dataSolicitacao: true,
+  aprovacaoDiretoria: true,
+  aprovacaoFinanceiro: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
