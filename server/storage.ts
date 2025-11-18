@@ -296,6 +296,31 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  // Create prestação with itens in a single transaction
+  async createPrestacaoAdiantamentoWithItens(
+    prestacaoData: InsertPrestacaoAdiantamento,
+    itens: InsertPrestacaoAdiantamentoItem[]
+  ): Promise<{ prestacao: PrestacaoAdiantamento; itens: PrestacaoAdiantamentoItem[] }> {
+    return await db.transaction(async (tx) => {
+      // Create prestação
+      const [prestacao] = await tx.insert(prestacaoAdiantamento).values(prestacaoData).returning();
+      
+      // Create itens if provided
+      const createdItens: PrestacaoAdiantamentoItem[] = [];
+      if (itens && itens.length > 0) {
+        for (const item of itens) {
+          const [createdItem] = await tx
+            .insert(prestacaoAdiantamentoItens)
+            .values({ ...item, prestacaoAdiantamentoId: prestacao.id })
+            .returning();
+          createdItens.push(createdItem);
+        }
+      }
+      
+      return { prestacao, itens: createdItens };
+    });
+  }
+
   async updatePrestacaoAdiantamento(id: number, data: Partial<PrestacaoAdiantamento>): Promise<PrestacaoAdiantamento | undefined> {
     const result = await db
       .update(prestacaoAdiantamento)

@@ -184,14 +184,20 @@ function PrestacaoContasDialog({
       valorDevolvido: number;
       valorAFaturar: number;
       observacoes?: string;
+      itens: Array<{
+        categoria: string;
+        descricao?: string;
+        valor: number;
+        comprovante?: string;
+      }>;
     }) => {
       return await apiRequest("POST", "/api/prestacao-adiantamento", data);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/adiantamentos"] });
       toast({
         title: "Prestação de contas enviada!",
-        description: "Sua prestação foi registrada e está aguardando aprovação.",
+        description: `${data.itens?.length || 0} despesas registradas.`,
       });
       onClose();
     },
@@ -296,13 +302,38 @@ function PrestacaoContasDialog({
       return;
     }
 
-    createPrestacaoMutation.mutate({
-      adiantamentoId: adiantamento.id,
-      valorTotalGasto: totalGasto,
-      valorDevolvido: valorDevolvido,
-      valorAFaturar: valorAFaturar,
-      observacoes: observacoes || undefined,
+    // Validate itens before submission
+    const formattedItens = itens.map((item, index) => {
+      const valor = parseFloat(item.valor);
+      
+      if (isNaN(valor) || valor <= 0) {
+        throw new Error(`Item ${index + 1}: Valor inválido. Insira um valor maior que zero.`);
+      }
+      
+      return {
+        categoria: item.categoria,
+        descricao: item.descricao || undefined,
+        valor: valor,
+        comprovante: item.comprovante,
+      };
     });
+
+    try {
+      createPrestacaoMutation.mutate({
+        adiantamentoId: adiantamento.id,
+        valorTotalGasto: totalGasto,
+        valorDevolvido: valorDevolvido,
+        valorAFaturar: valorAFaturar,
+        observacoes: observacoes || undefined,
+        itens: formattedItens,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro de validação",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (

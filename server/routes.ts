@@ -701,8 +701,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/prestacao-adiantamento", isAuthenticated, async (req, res) => {
     try {
-      const validated = insertPrestacaoAdiantamentoSchema.parse(req.body);
-      const result = await storage.createPrestacaoAdiantamento(validated);
+      // Extract itens from request body
+      const { itens, ...prestacaoData } = req.body;
+      
+      // Validate prestação data
+      const validated = insertPrestacaoAdiantamentoSchema.parse(prestacaoData);
+      
+      // Validate itens if provided
+      const validatedItens: InsertPrestacaoAdiantamentoItem[] = [];
+      if (itens && Array.isArray(itens) && itens.length > 0) {
+        for (const item of itens) {
+          // Parse without prestacaoAdiantamentoId (will be added by storage)
+          const { prestacaoAdiantamentoId, ...itemData } = item;
+          const validatedItem = insertPrestacaoAdiantamentoItemSchema
+            .omit({ prestacaoAdiantamentoId: true })
+            .parse(itemData);
+          validatedItens.push(validatedItem as InsertPrestacaoAdiantamentoItem);
+        }
+      }
+      
+      // Create prestação and itens in a transaction
+      const result = await storage.createPrestacaoAdiantamentoWithItens(validated, validatedItens);
+      
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
