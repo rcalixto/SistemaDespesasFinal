@@ -72,6 +72,7 @@ export interface IStorage {
   updateAdiantamento(id: number, data: Partial<Adiantamento>): Promise<Adiantamento | undefined>;
 
   // Prestação de Adiantamento
+  getPrestacaoAdiantamentoById(id: number): Promise<PrestacaoAdiantamento | undefined>;
   getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId: number): Promise<PrestacaoAdiantamento | undefined>;
   createPrestacaoAdiantamento(data: InsertPrestacaoAdiantamento): Promise<PrestacaoAdiantamento>;
   updatePrestacaoAdiantamento(id: number, data: Partial<PrestacaoAdiantamento>): Promise<PrestacaoAdiantamento | undefined>;
@@ -95,6 +96,7 @@ export interface IStorage {
   updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined>;
 
   // Prestação de Reembolso
+  getPrestacaoReembolsoById(id: number): Promise<PrestacaoReembolso | undefined>;
   getPrestacaoReembolsoByReembolsoId(reembolsoId: number): Promise<PrestacaoReembolso | undefined>;
   createPrestacaoReembolso(data: InsertPrestacaoReembolso): Promise<PrestacaoReembolso>;
   updatePrestacaoReembolso(id: number, data: Partial<PrestacaoReembolso>): Promise<PrestacaoReembolso | undefined>;
@@ -286,6 +288,14 @@ export class DatabaseStorage implements IStorage {
   // PRESTAÇÃO DE ADIANTAMENTO
   // ============================================================================
 
+  async getPrestacaoAdiantamentoById(id: number): Promise<PrestacaoAdiantamento | undefined> {
+    const result = await db
+      .select()
+      .from(prestacaoAdiantamento)
+      .where(eq(prestacaoAdiantamento.id, id));
+    return result[0];
+  }
+
   async getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId: number): Promise<PrestacaoAdiantamento | undefined> {
     const result = await db
       .select()
@@ -422,6 +432,14 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   // PRESTAÇÃO DE REEMBOLSO
   // ============================================================================
+
+  async getPrestacaoReembolsoById(id: number): Promise<PrestacaoReembolso | undefined> {
+    const result = await db
+      .select()
+      .from(prestacaoReembolso)
+      .where(eq(prestacaoReembolso.id, id));
+    return result[0];
+  }
 
   async getPrestacaoReembolsoByReembolsoId(reembolsoId: number): Promise<PrestacaoReembolso | undefined> {
     const result = await db

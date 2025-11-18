@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -18,15 +19,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Plane, Calendar } from "lucide-react";
+import { Plus, Plane, Calendar, Hotel } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PassagemAerea } from "@shared/schema";
+import type { PassagemAerea, Hospedagem } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
@@ -38,6 +40,7 @@ const formSchema = z.object({
   objetivo: z.string().min(1, "Objetivo é obrigatório"),
   diretoria: z.string().optional(),
   observacoes: z.string().optional(),
+  hospedagemId: z.coerce.number().optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -48,6 +51,11 @@ export default function Passagens() {
 
   const { data: passagens = [], isLoading } = useQuery<PassagemAerea[]>({
     queryKey: ["/api/passagens"],
+  });
+
+  // Fetch hospedagens for linking
+  const { data: hospedagens = [] } = useQuery<Hospedagem[]>({
+    queryKey: ["/api/hospedagens"],
   });
 
   const form = useForm<FormValues>({
@@ -61,6 +69,7 @@ export default function Passagens() {
       objetivo: "",
       diretoria: "",
       observacoes: "",
+      hospedagemId: null,
     },
   });
 
@@ -213,6 +222,39 @@ export default function Passagens() {
                       <FormControl>
                         <Textarea placeholder="Informações adicionais (opcional)" {...field} data-testid="input-observacoes" />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="hospedagemId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hospedagem Relacionada (Opcional)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} 
+                        value={field.value?.toString() || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-hospedagem">
+                            <SelectValue placeholder="Selecione uma hospedagem" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma hospedagem</SelectItem>
+                          {hospedagens.map((h) => (
+                            <SelectItem key={h.id} value={h.id.toString()}>
+                              {h.localidade} - {h.nomeHotel} ({formatDate(h.checkIn)} até {formatDate(h.checkOut)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        <Hotel className="inline h-4 w-4 mr-1" />
+                        Vincule esta passagem a uma solicitação de hospedagem existente
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

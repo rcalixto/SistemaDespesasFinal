@@ -898,6 +898,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // RELATÓRIOS PDF
+  // ============================================================================
+
+  // GET PDF report for adiantamento prestação
+  app.get("/api/prestacao-adiantamento/:id/relatorio", isAuthenticated, async (req, res) => {
+    try {
+      const prestacaoId = parseInt(req.params.id);
+      
+      // Fetch prestação
+      const prestacao = await storage.getPrestacaoAdiantamentoById(prestacaoId);
+      if (!prestacao) {
+        return res.status(404).json({ message: "Prestação not found" });
+      }
+
+      // Fetch items
+      const itens = await storage.getPrestacaoAdiantamentoItens(prestacaoId);
+
+      // Fetch adiantamento
+      const adiantamento = await storage.getAdiantamentoById(prestacao.adiantamentoId);
+      if (!adiantamento) {
+        return res.status(404).json({ message: "Adiantamento not found" });
+      }
+
+      // Fetch colaborador
+      const colaborador = await storage.getColaboradorById(adiantamento.colaboradorId);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      // Generate PDF
+      const { generateAdiantamentoReport } = await import("./pdfGenerator");
+      const doc = generateAdiantamentoReport({
+        prestacao,
+        itens,
+        adiantamento,
+        colaborador,
+      });
+
+      // Set response headers
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="prestacao-adiantamento-${prestacaoId}.pdf"`
+      );
+
+      // Pipe PDF to response
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // GET PDF report for reembolso prestação
+  app.get("/api/prestacao-reembolso/:id/relatorio", isAuthenticated, async (req, res) => {
+    try {
+      const prestacaoId = parseInt(req.params.id);
+      
+      // Fetch prestação
+      const prestacao = await storage.getPrestacaoReembolsoById(prestacaoId);
+      if (!prestacao) {
+        return res.status(404).json({ message: "Prestação not found" });
+      }
+
+      // Fetch items
+      const itens = await storage.getPrestacaoReembolsoItens(prestacaoId);
+
+      // Fetch reembolso
+      const reembolso = await storage.getReembolsoById(prestacao.reembolsoId);
+      if (!reembolso) {
+        return res.status(404).json({ message: "Reembolso not found" });
+      }
+
+      // Fetch colaborador
+      const colaborador = await storage.getColaboradorById(reembolso.colaboradorId);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      // Generate PDF
+      const { generateReembolsoReport } = await import("./pdfGenerator");
+      const doc = generateReembolsoReport({
+        prestacao,
+        itens,
+        reembolso,
+        colaborador,
+      });
+
+      // Set response headers
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="prestacao-reembolso-${prestacaoId}.pdf"`
+      );
+
+      // Pipe PDF to response
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
