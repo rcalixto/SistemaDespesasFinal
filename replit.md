@@ -100,13 +100,18 @@ Core entities include:
 - `colaboradores` - Employee records with department, directorate, cost center
 - `colaboradorRoles` - Many-to-many role assignments (Diretoria, Financeiro, Administrador)
 - `adiantamentos` - Advance payment requests with approval workflow status
-- `prestacaoAdiantamento` - Accountability records for advances
+- `prestacaoAdiantamento` - Accountability records for advances with expense items
+- `prestacaoAdiantamentoItens` - Individual expense items with category, value, and receipt attachment (comprovante)
 - `reembolsos` - Reimbursement requests with receipt attachment support
 - `prestacaoReembolso` - Accountability records for reimbursements
-- `passagensAereas` - Flight ticket requests
-- `hospedagens` - Accommodation requests
+- `passagensAereas` - Flight ticket requests with optional link to hospedagem (hospedagemId)
+- `hospedagens` - Accommodation requests with optional link to passagem aérea (passagemAereaId)
 - `viagensExecutadas` - Executed travel records with cost breakdown
 - `hospedagensExecutadas` - Executed lodging records with cost breakdown
+
+**Key Relationships**:
+- **Passagens ↔ Hospedagens**: Bidirectional optional relationship allowing a flight ticket to reference an accommodation and vice-versa. This enables tracking overnight trips where flight tickets require lodging.
+- **Prestação Items**: Each prestação de adiantamento can have multiple expense items (`prestacaoAdiantamentoItens`), each categorized under one of 10 predefined categories with receipt attachments stored in Replit Object Storage.
 
 **Session Storage**: Sessions table required by Replit Auth with TTL-based expiration.
 
