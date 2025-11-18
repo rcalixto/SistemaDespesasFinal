@@ -268,6 +268,7 @@ export const passagensAereas = pgTable("passagens_aereas", {
   aprovacaoFinanceiro: boolean("aprovacao_financeiro"),
   observacoes: text("observacoes"),
   anexos: jsonb("anexos").$type<string[]>().default([]),
+  hospedagemId: integer("hospedagem_id"), // Relacionamento opcional com hospedagem
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -304,6 +305,7 @@ export const hospedagens = pgTable("hospedagens", {
   status: varchar("status", { length: 50 }).notNull().default('Solicitado'),
   observacoes: text("observacoes"),
   anexos: jsonb("anexos").$type<string[]>().default([]),
+  passagemAereaId: integer("passagem_aerea_id"), // Relacionamento opcional com passagem aérea
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -470,12 +472,20 @@ export const passagensAereasRelations = relations(passagensAereas, ({ one }) => 
     fields: [passagensAereas.colaboradorId],
     references: [colaboradores.id],
   }),
+  hospedagem: one(hospedagens, {
+    fields: [passagensAereas.hospedagemId],
+    references: [hospedagens.id],
+  }),
 }));
 
 export const hospedagensRelations = relations(hospedagens, ({ one }) => ({
   colaborador: one(colaboradores, {
     fields: [hospedagens.colaboradorId],
     references: [colaboradores.id],
+  }),
+  passagemAerea: one(passagensAereas, {
+    fields: [hospedagens.passagemAereaId],
+    references: [passagensAereas.id],
   }),
 }));
 
