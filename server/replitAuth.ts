@@ -193,10 +193,21 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated()) {
+    console.log("[Auth Middleware] Not authenticated - req.isAuthenticated() returned false");
     return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const user = req.user as any;
+  
+  if (!user) {
+    console.log("[Auth Middleware] No user object in session");
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Para usuário de teste ou se não houver expires_at, permitir
+  if (user.id === "test-user-abert-123" || !user.expires_at) {
+    return next();
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -206,6 +217,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
+    console.log("[Auth Middleware] Token expired and no refresh token");
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
@@ -216,6 +228,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
+    console.error("[Auth Middleware] Token refresh failed:", error);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
