@@ -39,164 +39,101 @@ export default function Home() {
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Bem-vindo, {user?.firstName || "Colaborador"}!
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie suas despesas e solicitações
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src={user?.profileImageUrl || undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getUserInitials()}
-            </AvatarFallback>
-          </Avatar>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = "/api/logout")}
-            data-testid="logout-button"
-          >
-            Sair
-          </Button>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2" style={{ color: "#004650" }}>
+          Bem-vindo, {user?.firstName || "Colaborador"}!
+        </h1>
+        <p style={{ color: "#4A5458" }}>
+          Aqui você acompanha um resumo geral das despesas e movimentações.
+        </p>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Estilo ABERT */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-primary">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Adiantamentos Ativos
+        <Card className="shadow-card border-l-4" style={{ borderLeftColor: "#004650" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2" style={{ color: "#004650" }}>
+              <FileText className="w-5 h-5" />
+              <span>Adiantamentos</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-foreground">0</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  R$ 0,00 total
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-primary/20" />
-            </div>
+            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
+              0
+            </p>
+            <p className="mt-1" style={{ color: "#4A5458" }}>
+              Solicitações registradas
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-accent">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Reembolsos Pendentes
+        <Card className="shadow-card border-l-4" style={{ borderLeftColor: "#004650" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2" style={{ color: "#004650" }}>
+              <DollarSign className="w-5 h-5" />
+              <span>Valor Adiantado</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-foreground">0</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  R$ 0,00 total
-                </p>
-              </div>
-              <FileText className="w-8 h-8 text-accent/20" />
-            </div>
+            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
+              R$ 0,00
+            </p>
+            <p className="mt-1" style={{ color: "#4A5458" }}>
+              Total liberado
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-warning">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Aguardando Aprovação
+        <Card className="shadow-card border-l-4" style={{ borderLeftColor: "#004650" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2" style={{ color: "#004650" }}>
+              <TrendingUp className="w-5 h-5" />
+              <span>Reembolsos</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-foreground">0</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  solicitações
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-warning/20" />
-            </div>
+            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
+              0
+            </p>
+            <p className="mt-1" style={{ color: "#4A5458" }}>
+              Processos registrados
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-success">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Concluídos este Mês
+        <Card className="shadow-card border-l-4" style={{ borderLeftColor: "#004650" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2" style={{ color: "#004650" }}>
+              <Plane className="w-5 h-5" />
+              <span>Viagens</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-foreground">0</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  processos
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-success/20" />
-            </div>
+            <p className="text-4xl font-bold" style={{ color: "#004650" }}>
+              0
+            </p>
+            <p className="mt-1" style={{ color: "#4A5458" }}>
+              Executadas
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-4">
-          Ações Rápidas
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Button
-            asChild
-            className="h-auto py-6 flex-col space-y-2"
-            variant="outline"
-          >
-            <Link href="/adiantamentos" data-testid="quick-adiantamento">
-              <DollarSign className="w-6 h-6" />
-              <span>Novo Adiantamento</span>
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="h-auto py-6 flex-col space-y-2"
-            variant="outline"
-          >
-            <Link href="/reembolsos" data-testid="quick-reembolso">
-              <FileText className="w-6 h-6" />
-              <span>Novo Reembolso</span>
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="h-auto py-6 flex-col space-y-2"
-            variant="outline"
-          >
-            <Link href="/passagens" data-testid="quick-passagem">
-              <Plane className="w-6 h-6" />
-              <span>Solicitar Passagem</span>
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="h-auto py-6 flex-col space-y-2"
-            variant="outline"
-          >
-            <Link href="/hospedagens" data-testid="quick-hospedagem">
-              <Hotel className="w-6 h-6" />
-              <span>Solicitar Hospedagem</span>
-            </Link>
-          </Button>
-        </div>
+      {/* Rodapé */}
+      <div className="mt-12 text-sm text-center" style={{ color: "#7A8488" }}>
+        Sistema de Gestão de Despesas — ABERT
       </div>
+    </div>
+  );
+}
 
-      {/* Recent Activity - Empty State */}
+function OldQuickActions() {
+  return (
+    <div className="hidden">
+      {/* Mantido para referência, mas não usado */}
       <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-4">
-          Atividades Recentes
+        <h2 className="text-2xl font-semibold mb-4">
+          Ações Rápidas (Old)
         </h2>
         <Card>
           <CardContent className="py-12 text-center">
