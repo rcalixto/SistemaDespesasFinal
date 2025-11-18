@@ -1,38 +1,557 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  users,
+  colaboradores,
+  adiantamentos,
+  prestacaoAdiantamento,
+  reembolsos,
+  prestacaoReembolso,
+  passagensAereas,
+  hospedagens,
+  viagensExecutadas,
+  hospedagensExecutadas,
+  type User,
+  type UpsertUser,
+  type Colaborador,
+  type InsertColaborador,
+  type Adiantamento,
+  type InsertAdiantamento,
+  type PrestacaoAdiantamento,
+  type InsertPrestacaoAdiantamento,
+  type Reembolso,
+  type InsertReembolso,
+  type PrestacaoReembolso,
+  type InsertPrestacaoReembolso,
+  type PassagemAerea,
+  type InsertPassagemAerea,
+  type Hospedagem,
+  type InsertHospedagem,
+  type ViagemExecutada,
+  type InsertViagemExecutada,
+  type HospedagemExecutada,
+  type InsertHospedagemExecutada,
+} from "@shared/schema";
+import { eq, and, gte, lte, like, desc } from "drizzle-orm";
 
 export interface IStorage {
+  // Users (for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
+
+  // Colaboradores
+  getColaboradores(): Promise<Colaborador[]>;
+  getColaboradorById(id: number): Promise<Colaborador | undefined>;
+  getColaboradorByUserId(userId: string): Promise<Colaborador | undefined>;
+  createColaborador(data: InsertColaborador): Promise<Colaborador>;
+  updateColaborador(id: number, data: Partial<InsertColaborador>): Promise<Colaborador | undefined>;
+
+  // Adiantamentos
+  getAdiantamentos(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    diretoria?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<Adiantamento[]>;
+  getAdiantamentoById(id: number): Promise<Adiantamento | undefined>;
+  createAdiantamento(data: InsertAdiantamento): Promise<Adiantamento>;
+  updateAdiantamento(id: number, data: Partial<Adiantamento>): Promise<Adiantamento | undefined>;
+
+  // Prestação de Adiantamento
+  getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId: number): Promise<PrestacaoAdiantamento | undefined>;
+  createPrestacaoAdiantamento(data: InsertPrestacaoAdiantamento): Promise<PrestacaoAdiantamento>;
+  updatePrestacaoAdiantamento(id: number, data: Partial<PrestacaoAdiantamento>): Promise<PrestacaoAdiantamento | undefined>;
+
+  // Reembolsos
+  getReembolsos(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    centroCusto?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<Reembolso[]>;
+  getReembolsoById(id: number): Promise<Reembolso | undefined>;
+  createReembolso(data: InsertReembolso): Promise<Reembolso>;
+  updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined>;
+
+  // Prestação de Reembolso
+  getPrestacaoReembolsoByReembolsoId(reembolsoId: number): Promise<PrestacaoReembolso | undefined>;
+  createPrestacaoReembolso(data: InsertPrestacaoReembolso): Promise<PrestacaoReembolso>;
+  updatePrestacaoReembolso(id: number, data: Partial<PrestacaoReembolso>): Promise<PrestacaoReembolso | undefined>;
+
+  // Passagens Aéreas
+  getPassagensAereas(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<PassagemAerea[]>;
+  getPassagemAereaById(id: number): Promise<PassagemAerea | undefined>;
+  createPassagemAerea(data: InsertPassagemAerea): Promise<PassagemAerea>;
+  updatePassagemAerea(id: number, data: Partial<PassagemAerea>): Promise<PassagemAerea | undefined>;
+
+  // Hospedagens
+  getHospedagens(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<Hospedagem[]>;
+  getHospedagemById(id: number): Promise<Hospedagem | undefined>;
+  createHospedagem(data: InsertHospedagem): Promise<Hospedagem>;
+  updateHospedagem(id: number, data: Partial<Hospedagem>): Promise<Hospedagem | undefined>;
+
+  // Viagens Executadas
+  getViagensExecutadas(filters?: {
+    colaboradorId?: number;
+    centroCusto?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<ViagemExecutada[]>;
+  getViagemExecutadaById(id: number): Promise<ViagemExecutada | undefined>;
+  createViagemExecutada(data: InsertViagemExecutada): Promise<ViagemExecutada>;
+  updateViagemExecutada(id: number, data: Partial<ViagemExecutada>): Promise<ViagemExecutada | undefined>;
+
+  // Hospedagens Executadas
+  getHospedagensExecutadas(filters?: {
+    colaboradorId?: number;
+    centroCusto?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<HospedagemExecutada[]>;
+  getHospedagemExecutadaById(id: number): Promise<HospedagemExecutada | undefined>;
+  createHospedagemExecutada(data: InsertHospedagemExecutada): Promise<HospedagemExecutada>;
+  updateHospedagemExecutada(id: number, data: Partial<HospedagemExecutada>): Promise<HospedagemExecutada | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
+export class DatabaseStorage implements IStorage {
+  // ============================================================================
+  // USERS (for Replit Auth)
+  // ============================================================================
 
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // ============================================================================
+  // COLABORADORES
+  // ============================================================================
+  
+  async getColaboradores(): Promise<Colaborador[]> {
+    return await db.select().from(colaboradores);
+  }
+
+  async getColaboradorById(id: number): Promise<Colaborador | undefined> {
+    const result = await db.select().from(colaboradores).where(eq(colaboradores.id, id));
+    return result[0];
+  }
+
+  async getColaboradorByUserId(userId: string): Promise<Colaborador | undefined> {
+    const result = await db.select().from(colaboradores).where(eq(colaboradores.userId, userId));
+    return result[0];
+  }
+
+  async createColaborador(data: InsertColaborador): Promise<Colaborador> {
+    const result = await db.insert(colaboradores).values(data).returning();
+    return result[0];
+  }
+
+  async updateColaborador(id: number, data: Partial<InsertColaborador>): Promise<Colaborador | undefined> {
+    const result = await db
+      .update(colaboradores)
+      .set(data)
+      .where(eq(colaboradores.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // ADIANTAMENTOS
+  // ============================================================================
+
+  async getAdiantamentos(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    diretoria?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<Adiantamento[]> {
+    let query = db.select().from(adiantamentos).orderBy(desc(adiantamentos.dataSolicitacao));
+    
+    const conditions = [];
+    if (filters?.colaboradorId) {
+      conditions.push(eq(adiantamentos.colaboradorId, filters.colaboradorId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(adiantamentos.status, filters.status));
+    }
+    if (filters?.diretoria) {
+      conditions.push(like(adiantamentos.diretoriaResponsavel, `%${filters.diretoria}%`));
+    }
+    if (filters?.dataInicio) {
+      conditions.push(gte(adiantamentos.dataIda, new Date(filters.dataInicio)));
+    }
+    if (filters?.dataFim) {
+      conditions.push(lte(adiantamentos.dataVolta, new Date(filters.dataFim)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async getAdiantamentoById(id: number): Promise<Adiantamento | undefined> {
+    const result = await db.select().from(adiantamentos).where(eq(adiantamentos.id, id));
+    return result[0];
+  }
+
+  async createAdiantamento(data: InsertAdiantamento): Promise<Adiantamento> {
+    const result = await db.insert(adiantamentos).values(data).returning();
+    return result[0];
+  }
+
+  async updateAdiantamento(id: number, data: Partial<Adiantamento>): Promise<Adiantamento | undefined> {
+    const result = await db
+      .update(adiantamentos)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(adiantamentos.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // PRESTAÇÃO DE ADIANTAMENTO
+  // ============================================================================
+
+  async getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId: number): Promise<PrestacaoAdiantamento | undefined> {
+    const result = await db
+      .select()
+      .from(prestacaoAdiantamento)
+      .where(eq(prestacaoAdiantamento.adiantamentoId, adiantamentoId));
+    return result[0];
+  }
+
+  async createPrestacaoAdiantamento(data: InsertPrestacaoAdiantamento): Promise<PrestacaoAdiantamento> {
+    const result = await db.insert(prestacaoAdiantamento).values(data).returning();
+    return result[0];
+  }
+
+  async updatePrestacaoAdiantamento(id: number, data: Partial<PrestacaoAdiantamento>): Promise<PrestacaoAdiantamento | undefined> {
+    const result = await db
+      .update(prestacaoAdiantamento)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(prestacaoAdiantamento.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // REEMBOLSOS
+  // ============================================================================
+
+  async getReembolsos(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    centroCusto?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<Reembolso[]> {
+    let query = db.select().from(reembolsos).orderBy(desc(reembolsos.dataSolicitacao));
+    
+    const conditions = [];
+    if (filters?.colaboradorId) {
+      conditions.push(eq(reembolsos.colaboradorId, filters.colaboradorId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(reembolsos.status, filters.status));
+    }
+    if (filters?.centroCusto) {
+      conditions.push(like(reembolsos.centroCusto, `%${filters.centroCusto}%`));
+    }
+    if (filters?.dataInicio) {
+      conditions.push(gte(reembolsos.dataSolicitacao, new Date(filters.dataInicio)));
+    }
+    if (filters?.dataFim) {
+      conditions.push(lte(reembolsos.dataSolicitacao, new Date(filters.dataFim)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async getReembolsoById(id: number): Promise<Reembolso | undefined> {
+    const result = await db.select().from(reembolsos).where(eq(reembolsos.id, id));
+    return result[0];
+  }
+
+  async createReembolso(data: InsertReembolso): Promise<Reembolso> {
+    const result = await db.insert(reembolsos).values(data).returning();
+    return result[0];
+  }
+
+  async updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined> {
+    const result = await db
+      .update(reembolsos)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(reembolsos.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // PRESTAÇÃO DE REEMBOLSO
+  // ============================================================================
+
+  async getPrestacaoReembolsoByReembolsoId(reembolsoId: number): Promise<PrestacaoReembolso | undefined> {
+    const result = await db
+      .select()
+      .from(prestacaoReembolso)
+      .where(eq(prestacaoReembolso.reembolsoId, reembolsoId));
+    return result[0];
+  }
+
+  async createPrestacaoReembolso(data: InsertPrestacaoReembolso): Promise<PrestacaoReembolso> {
+    const result = await db.insert(prestacaoReembolso).values(data).returning();
+    return result[0];
+  }
+
+  async updatePrestacaoReembolso(id: number, data: Partial<PrestacaoReembolso>): Promise<PrestacaoReembolso | undefined> {
+    const result = await db
+      .update(prestacaoReembolso)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(prestacaoReembolso.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // PASSAGENS AÉREAS
+  // ============================================================================
+
+  async getPassagensAereas(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<PassagemAerea[]> {
+    let query = db.select().from(passagensAereas).orderBy(desc(passagensAereas.dataSolicitacao));
+    
+    const conditions = [];
+    if (filters?.colaboradorId) {
+      conditions.push(eq(passagensAereas.colaboradorId, filters.colaboradorId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(passagensAereas.status, filters.status));
+    }
+    if (filters?.dataInicio) {
+      conditions.push(gte(passagensAereas.dataIda, new Date(filters.dataInicio)));
+    }
+    if (filters?.dataFim && filters.dataFim !== "") {
+      conditions.push(lte(passagensAereas.dataVolta, new Date(filters.dataFim)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async getPassagemAereaById(id: number): Promise<PassagemAerea | undefined> {
+    const result = await db.select().from(passagensAereas).where(eq(passagensAereas.id, id));
+    return result[0];
+  }
+
+  async createPassagemAerea(data: InsertPassagemAerea): Promise<PassagemAerea> {
+    const result = await db.insert(passagensAereas).values(data).returning();
+    return result[0];
+  }
+
+  async updatePassagemAerea(id: number, data: Partial<PassagemAerea>): Promise<PassagemAerea | undefined> {
+    const result = await db
+      .update(passagensAereas)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(passagensAereas.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // HOSPEDAGENS
+  // ============================================================================
+
+  async getHospedagens(filters?: {
+    colaboradorId?: number;
+    status?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<Hospedagem[]> {
+    let query = db.select().from(hospedagens).orderBy(desc(hospedagens.dataSolicitacao));
+    
+    const conditions = [];
+    if (filters?.colaboradorId) {
+      conditions.push(eq(hospedagens.colaboradorId, filters.colaboradorId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(hospedagens.status, filters.status));
+    }
+    if (filters?.dataInicio) {
+      conditions.push(gte(hospedagens.dataCheckin, new Date(filters.dataInicio)));
+    }
+    if (filters?.dataFim) {
+      conditions.push(lte(hospedagens.dataCheckout, new Date(filters.dataFim)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async getHospedagemById(id: number): Promise<Hospedagem | undefined> {
+    const result = await db.select().from(hospedagens).where(eq(hospedagens.id, id));
+    return result[0];
+  }
+
+  async createHospedagem(data: InsertHospedagem): Promise<Hospedagem> {
+    const result = await db.insert(hospedagens).values(data).returning();
+    return result[0];
+  }
+
+  async updateHospedagem(id: number, data: Partial<Hospedagem>): Promise<Hospedagem | undefined> {
+    const result = await db
+      .update(hospedagens)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(hospedagens.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // VIAGENS EXECUTADAS
+  // ============================================================================
+
+  async getViagensExecutadas(filters?: {
+    colaboradorId?: number;
+    centroCusto?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<ViagemExecutada[]> {
+    let query = db.select().from(viagensExecutadas).orderBy(desc(viagensExecutadas.emissao));
+    
+    const conditions = [];
+    if (filters?.colaboradorId) {
+      conditions.push(eq(viagensExecutadas.colaboradorId, filters.colaboradorId));
+    }
+    if (filters?.centroCusto) {
+      conditions.push(like(viagensExecutadas.centroCusto, `%${filters.centroCusto}%`));
+    }
+    if (filters?.dataInicio) {
+      conditions.push(gte(viagensExecutadas.dataVoo, new Date(filters.dataInicio)));
+    }
+    if (filters?.dataFim) {
+      conditions.push(lte(viagensExecutadas.dataVoo, new Date(filters.dataFim)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async getViagemExecutadaById(id: number): Promise<ViagemExecutada | undefined> {
+    const result = await db.select().from(viagensExecutadas).where(eq(viagensExecutadas.id, id));
+    return result[0];
+  }
+
+  async createViagemExecutada(data: InsertViagemExecutada): Promise<ViagemExecutada> {
+    const result = await db.insert(viagensExecutadas).values(data).returning();
+    return result[0];
+  }
+
+  async updateViagemExecutada(id: number, data: Partial<ViagemExecutada>): Promise<ViagemExecutada | undefined> {
+    const result = await db
+      .update(viagensExecutadas)
+      .set(data)
+      .where(eq(viagensExecutadas.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // HOSPEDAGENS EXECUTADAS
+  // ============================================================================
+
+  async getHospedagensExecutadas(filters?: {
+    colaboradorId?: number;
+    centroCusto?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<HospedagemExecutada[]> {
+    let query = db.select().from(hospedagensExecutadas).orderBy(desc(hospedagensExecutadas.emissao));
+    
+    const conditions = [];
+    if (filters?.colaboradorId) {
+      conditions.push(eq(hospedagensExecutadas.colaboradorId, filters.colaboradorId));
+    }
+    if (filters?.centroCusto) {
+      conditions.push(like(hospedagensExecutadas.centroCusto, `%${filters.centroCusto}%`));
+    }
+    if (filters?.dataInicio) {
+      conditions.push(gte(hospedagensExecutadas.dataHospedagem, new Date(filters.dataInicio)));
+    }
+    if (filters?.dataFim) {
+      conditions.push(lte(hospedagensExecutadas.dataHospedagem, new Date(filters.dataFim)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async getHospedagemExecutadaById(id: number): Promise<HospedagemExecutada | undefined> {
+    const result = await db.select().from(hospedagensExecutadas).where(eq(hospedagensExecutadas.id, id));
+    return result[0];
+  }
+
+  async createHospedagemExecutada(data: InsertHospedagemExecutada): Promise<HospedagemExecutada> {
+    const result = await db.insert(hospedagensExecutadas).values(data).returning();
+    return result[0];
+  }
+
+  async updateHospedagemExecutada(id: number, data: Partial<HospedagemExecutada>): Promise<HospedagemExecutada | undefined> {
+    const result = await db
+      .update(hospedagensExecutadas)
+      .set(data)
+      .where(eq(hospedagensExecutadas.id, id))
+      .returning();
+    return result[0];
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
