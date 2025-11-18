@@ -173,6 +173,23 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+
+  app.get("/api/auth/user", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = req.user as any;
+    const claims = user.claims || {};
+
+    res.json({
+      id: user.id || claims.sub,
+      email: claims.email,
+      firstName: claims.first_name,
+      lastName: claims.last_name,
+      profileImageUrl: claims.profile_image_url,
+    });
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

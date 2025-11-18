@@ -41,6 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).send("Not found");
     }
     
+    // Usuário de teste com todos os campos necessários
     const testUser = {
       id: "test-user-abert-123",
       claims: {
@@ -49,7 +50,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         first_name: "João",
         last_name: "Silva Teste",
         profile_image_url: "https://ui-avatars.com/api/?name=Joao+Silva&background=004650&color=FFC828",
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 dias
       },
+      access_token: "test-token",
+      refresh_token: "test-refresh-token",
+      expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 dias
     };
     
     req.login(testUser, (err) => {
