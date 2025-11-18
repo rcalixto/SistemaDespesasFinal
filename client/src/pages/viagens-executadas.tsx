@@ -31,7 +31,7 @@ import type { ViagemExecutada } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  colaboradorId: z.number(),
+  
   dataVoo: z.string().min(1, "Data do voo é obrigatória"),
   centroCusto: z.string().optional(),
   objetivo: z.string().min(1, "Objetivo é obrigatório"),
@@ -62,7 +62,7 @@ export default function ViagensExecutadas() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      colaboradorId: 1,
+      
       dataVoo: "",
       centroCusto: "",
       objetivo: "",

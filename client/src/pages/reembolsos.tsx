@@ -32,7 +32,7 @@ import type { Reembolso } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  colaboradorId: z.number(),
+  
   motivo: z.string().min(1, "Motivo é obrigatório"),
   centroCusto: z.string().optional(),
   valorTotalSolicitado: z.number().positive("Valor deve ser maior que zero"),
@@ -53,7 +53,7 @@ export default function Reembolsos() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      colaboradorId: 1,
+      
       motivo: "",
       centroCusto: "",
       valorTotalSolicitado: 0,

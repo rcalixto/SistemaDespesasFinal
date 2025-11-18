@@ -31,7 +31,7 @@ import type { HospedagemExecutada } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  colaboradorId: z.number(),
+  
   dataHospedagem: z.string().min(1, "Data da hospedagem é obrigatória"),
   centroCusto: z.string().optional(),
   objetivo: z.string().min(1, "Objetivo é obrigatório"),
@@ -60,7 +60,7 @@ export default function HospedagensExecutadas() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      colaboradorId: 1,
+      
       dataHospedagem: "",
       centroCusto: "",
       objetivo: "",

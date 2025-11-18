@@ -30,7 +30,7 @@ import type { Hospedagem } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  colaboradorId: z.number(),
+  
   cidade: z.string().min(1, "Cidade é obrigatória"),
   estado: z.string().optional(),
   dataCheckin: z.string().min(1, "Data de check-in é obrigatória"),
@@ -53,7 +53,7 @@ export default function Hospedagens() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      colaboradorId: 1,
+      
       cidade: "",
       estado: "",
       dataCheckin: "",

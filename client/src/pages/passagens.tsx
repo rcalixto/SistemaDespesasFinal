@@ -30,7 +30,7 @@ import type { PassagemAerea } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  colaboradorId: z.number(),
+  
   origem: z.string().min(1, "Origem é obrigatória"),
   destino: z.string().min(1, "Destino é obrigatório"),
   dataIda: z.string().min(1, "Data de ida é obrigatória"),
@@ -53,7 +53,7 @@ export default function Passagens() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      colaboradorId: 1,
+      
       origem: "",
       destino: "",
       dataIda: "",

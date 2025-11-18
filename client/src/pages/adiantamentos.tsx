@@ -32,7 +32,6 @@ import type { Adiantamento } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = z.object({
-  colaboradorId: z.number(),
   localViagem: z.string().min(1, "Local da viagem é obrigatório"),
   motivo: z.string().min(1, "Motivo é obrigatório"),
   dataIda: z.string().min(1, "Data de ida é obrigatória"),
@@ -56,7 +55,6 @@ export default function Adiantamentos() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      colaboradorId: 1, // TODO: Get from auth user
       localViagem: "",
       motivo: "",
       dataIda: "",
@@ -69,10 +67,7 @@ export default function Adiantamentos() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("POST", "/api/adiantamentos", {
-        ...data,
-        anexos: anexos.map((f) => f.name), // TODO: Upload files properly
-      });
+      return await apiRequest("POST", "/api/adiantamentos", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/adiantamentos"] });
