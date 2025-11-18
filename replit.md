@@ -116,16 +116,25 @@ Core entities include:
 
 **Provider**: Replit Auth (OpenID Connect) integrated via Passport.js strategy.
 
+**Domain Restriction**: 
+- **Only @abert.org.br emails allowed** - enforced server-side in verify callback
+- Email normalized to lowercase before validation
+- Missing email or userId claims rejected
+- Non-domain emails redirected to `/auth-error` page
+- Custom callback handler prevents server crashes on auth failures
+
 **Session Management**: 
 - 7-day session TTL
 - PostgreSQL-backed session store (secure, persistent)
 - HTTP-only, secure cookies
 - Auto-refresh of access tokens
+- user.id persisted from OIDC `sub` claim for downstream API lookups
 
 **User Model**: 
 - Replit Auth provides base user identity (id, email, names, profile image)
 - Local `colaboradores` table extends with business attributes
 - Auto-provisioning creates colaborador on first login
+- Normalized email stored in lowercase format
 
 **Authorization Model**:
 - Role-based access control (RBAC)
@@ -134,10 +143,12 @@ Core entities include:
 - Administrators have universal access
 
 **Security Considerations**:
+- Domain validation bypass prevented (email required and validated)
 - Credentials included in all API requests
 - 401 responses handled gracefully in query client
 - Session secret required in environment
 - HTTPS-only cookies in production
+- Auth failures logged and gracefully redirected
 
 ### External Dependencies
 
