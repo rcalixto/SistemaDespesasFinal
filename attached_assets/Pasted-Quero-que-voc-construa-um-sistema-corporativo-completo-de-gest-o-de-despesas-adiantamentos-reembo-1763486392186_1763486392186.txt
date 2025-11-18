@@ -1,0 +1,475 @@
+Quero que você construa um sistema corporativo completo de gestão de despesas, adiantamentos, reembolsos, viagens e hospedagens para a ABERT, seguindo fielmente as especificações abaixo.
+
+O sistema deve criar:
+
+- ENTIDADES completas
+
+- RELACIONAMENTOS corretos
+
+- FORMULÁRIOS modernos e intuitivos
+
+- WORKFLOWS de aprovação (diretoria e financeiro)
+
+- DASHBOARDS gerenciais
+
+- TELAS por área (usuário, diretoria, financeiro)
+
+- LÓGICAS de status automáticos
+
+- SUPORTE A ANEXOS (PDF, NF, recibos, comprovantes)
+
+- REGISTROS DE VIAGEM E HOSPEDAGEM executadas
+
+- FILTROS por Centro de Custo, Diretoria, Colaborador, Data
+
+- ACOMPANHAMENTO em tempo real de cada solicitação
+
+====================================================================
+
+1. ENTIDADES E CAMPOS (CRIAR EXATAMENTE COMO ESTÃO)
+
+====================================================================
+
+COLABORADORES
+
+- ColaboradorID (ID)
+
+- Nome
+
+- Email
+
+- Departamento
+
+- Diretoria
+
+- CentroCusto
+
+- Cargo
+
+- Ativo (boolean)
+
+ADIANTAMENTOS
+
+- AdiantamentoID (ID)
+
+- ColaboradorID (Ref → Colaboradores)
+
+- DataSolicitacao
+
+- LocalViagem
+
+- Motivo
+
+- DataIda
+
+- DataVolta
+
+- ValorSolicitado
+
+- DiretoriaResponsavel
+
+- Status (Solicitado / AprovadoDiretoria / AprovadoFinanceiro / Pago / PrestacaoPendente / Concluído)
+
+- AprovacaoDiretoria (boolean ou enum)
+
+- AprovacaoFinanceiro (boolean ou enum)
+
+- DataPagamento
+
+- FormaPagamento
+
+- Observacoes
+
+- Anexos (upload)
+
+PRESTACAOADIANTAMENTO
+
+- AcertoID (ID)
+
+- AdiantamentoID (Ref → Adiantamentos)
+
+- DataEnvio
+
+- ValorTotalGasto
+
+- ValorDevolvido
+
+- ValorAFaturar
+
+- Status (Pendente / Validado / Finalizado)
+
+- Observacoes
+
+- Anexos (upload)
+
+REEMBOLSOS
+
+- ReembolsoID (ID)
+
+- ColaboradorID (Ref)
+
+- DataSolicitacao
+
+- Motivo
+
+- CentroCusto
+
+- ValorTotalSolicitado
+
+- Status
+
+- AprovacaoDiretoria
+
+- AprovacaoFinanceiro
+
+- DataPagamento
+
+- FormaPagamento
+
+- Observacoes
+
+- Anexos (upload)
+
+PRESTACAOREEMBOLSO
+
+- PrestacaoReembolsoID (ID)
+
+- ReembolsoID (Ref)
+
+- DataEnvio
+
+- ValorComprovado
+
+- Status (Pendente / Validado / Finalizado)
+
+- Observacoes
+
+- Anexos (upload)
+
+PASSAGENSAEREAS
+
+- PassagemID (ID)
+
+- ColaboradorID (Ref)
+
+- DataSolicitacao
+
+- Origem
+
+- Destino
+
+- DataIda
+
+- DataVolta
+
+- Objetivo
+
+- Diretoria
+
+- Status (Solicitado / Aprovado / Emitido / Pago)
+
+- AprovacaoDiretoria
+
+- AprovacaoFinanceiro
+
+- Observacoes
+
+- Anexos (upload)
+
+HOSPEDAGENS
+
+- HospedagemID (ID)
+
+- ColaboradorID (Ref)
+
+- DataSolicitacao
+
+- Cidade
+
+- Estado
+
+- DataCheckin
+
+- DataCheckout
+
+- Objetivo
+
+- Diretoria
+
+- Status
+
+- Observacoes
+
+- Anexos (upload)
+
+VIAGENSEXECUTADAS
+
+- ViagemID (ID)
+
+- ColaboradorID (Ref)
+
+- Emissao
+
+- DataVoo
+
+- CentroCusto
+
+- Objetivo
+
+- Trecho
+
+- CiaAerea
+
+- ValorPassagem
+
+- TaxaEmbarque
+
+- TaxaAgencia
+
+- OutrasTaxas
+
+- CreditoBilheteAnterior
+
+- ValorTotalDesembolsar
+
+- FormaPagamento
+
+- ResponsavelEmissao
+
+- Observacoes
+
+- DataPagamento
+
+- Fatura (upload opcional)
+
+HOSPEDAGENSEXECUTADAS
+
+- HospedagemExecID (ID)
+
+- ColaboradorID (Ref)
+
+- Emissao
+
+- DataHospedagem
+
+- CentroCusto
+
+- Objetivo
+
+- Hotel
+
+- ValorDiaria
+
+- Cafe
+
+- Taxa
+
+- ExtrasPosteriores
+
+- ValorTotal
+
+- ResponsavelEmissao
+
+- FormaPagamento
+
+- Observacoes
+
+- DataPagamento
+
+- Fatura (upload opcional)
+
+====================================================================
+
+2. RELACIONAMENTOS (CRIE EXATAMENTE ASSIM)
+
+====================================================================
+
+- COLABORADORES (1) → (N) ADIANTAMENTOS
+
+- COLABORADORES (1) → (N) REEMBOLSOS
+
+- COLABORADORES (1) → (N) PASSAGENSAEREAS
+
+- COLABORADORES (1) → (N) HOSPEDAGENS
+
+- ADIANTAMENTOS (1) → (1) PRESTACAOADIANTAMENTO
+
+- REEMBOLSOS (1) → (1) PRESTACAOREEMBOLSO
+
+- COLABORADORES (1) → (N) VIAGENSEXECUTADAS
+
+- COLABORADORES (1) → (N) HOSPEDAGENSEXECUTADAS
+
+====================================================================
+
+3. WORKFLOWS / LÓGICA DO SISTEMA
+
+====================================================================
+
+CRIAR AUTOMATICAMENTE OS WORKFLOWS:
+
+ADIANTAMENTOS
+
+1. Usuário cria solicitação → Status = “Solicitado”
+
+2. Diretoria recebe notificação → Aprova/Rejeita
+
+- Se aprovado: Status = “AprovadoDiretoria”
+
+3. Financeiro recebe notificação → Aprova/Rejeita
+
+- Se aprovado: Status = “AprovadoFinanceiro”
+
+4. Pagamento é registrado → Status = “Pago”
+
+5. Usuário envia PRESTAÇÃO → Status = “PrestacaoPendente”
+
+6. Financeiro valida valores → Status = “Concluído”
+
+REEMBOLSOS
+
+1. Solicitação → “Solicitado”
+
+2. Diretoria aprova → “AprovadoDiretoria”
+
+3. Financeiro aprova → “AprovadoFinanceiro”
+
+4. Pagamento registrado → “Concluído”
+
+PASSAGENS AÉREAS
+
+1. Solicitação
+
+2. Aprovação diretoria
+
+3. Aprovação financeiro
+
+4. Emissão → registrar valores no módulo VIAGENSEXECUTADAS
+
+HOSPEDAGENS
+
+1. Solicitação
+
+2. Aprovação diretoria
+
+3. Aprovação financeiro
+
+4. Reserva → registrar valores no módulo HOSPEDAGENSEXECUTADAS
+
+====================================================================
+
+4. DASHBOARDS QUE DEVEM SER CRIADOS
+
+====================================================================
+
+CRIAR PAINÉIS AUTOMATICAMENTE:
+
+1. **Meu Painel**
+
+- Minhas solicitações
+
+- Minhas viagens
+
+- Minhas hospedagens
+
+2. **Pendências da Diretoria**
+
+- Adiantamentos aguardando aprovação
+
+- Reembolsos aguardando aprovação
+
+- Passagens aguardando aprovação
+
+- Hospedagens aguardando aprovação
+
+3. **Pendências do Financeiro**
+
+- Aguardando pagamento
+
+- Aguardando validação de prestação
+
+- Aguardando lançamento final
+
+4. **Dashboard Financeiro**
+
+- Total gasto por diretoria
+
+- Total gasto por centro de custo
+
+- Total adiantado vs total prestado
+
+- Reembolsos por colaborador
+
+- Viagens por período
+
+- Hospedagens por período
+
+5. **Painel de Viagens**
+
+- Voos emitidos
+
+- Valores totais
+
+- Cias aéreas mais usadas
+
+- Gráfico por mês
+
+6. **Painel de Hospedagens**
+
+- Hotéis mais utilizados
+
+- Total por diária
+
+- Totais anuais
+
+====================================================================
+
+5. REGRAS GERAIS
+
+====================================================================
+
+- Todos os formulários devem permitir uploads (PDF, JPG, PNG).
+
+- Campos de valor devem ser numéricos com duas casas decimais.
+
+- Campos de data devem validar datas reais.
+
+- Todo colaborador só pode ver suas solicitações (exceto diretoria e financeiro).
+
+- Criar controle de permissões baseado em papéis:
+
+- Usuário
+
+- Diretoria
+
+- Financeiro
+
+- Administrador (TI)
+
+- Deve ser possível filtrar por:
+
+- Centro de Custo
+
+- Diretoria
+
+- Colaborador
+
+- Tipo de solicitação
+
+- Ano/Mês
+
+====================================================================
+
+OBJETIVO FINAL
+
+====================================================================
+
+Quero um sistema completo, moderno, funcional e visualmente organizado,
+
+permitindo gestão total de adiantamentos, reembolsos, viagens e hospedagens,
+
+com fluxos de aprovação centralizados, dashboards administrativos e
+
+controle financeiro consolidado.
+
+Nov 15, 06:01 PM
