@@ -78,13 +78,11 @@ export default function HospedagensExecutadas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("POST", "/api/hospedagens-executadas", {
-        ...data,
-        fatura: fatura[0]?.name,
-      });
+      return await apiRequest("POST", "/api/hospedagens-executadas", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hospedagens-executadas"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Hospedagem executada registrada com sucesso!",

@@ -13,11 +13,11 @@ import Adiantamentos from "@/pages/adiantamentos";
 import Reembolsos from "@/pages/reembolsos";
 import Passagens from "@/pages/passagens";
 import Hospedagens from "@/pages/hospedagens";
+import ViagensExecutadas from "@/pages/viagens-executadas";
+import HospedagensExecutadas from "@/pages/hospedagens-executadas";
 import type { User } from "@shared/schema";
 
 // Placeholder pages for routes not yet implemented
-const ViagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Viagens Executadas - Em breve</h1></div>;
-const HospedagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Hospedagens Executadas - Em breve</h1></div>;
 const PrestacaoAdiantamentos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Adiantamentos - Em breve</h1></div>;
 const PrestacaoReembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Reembolsos - Em breve</h1></div>;
 

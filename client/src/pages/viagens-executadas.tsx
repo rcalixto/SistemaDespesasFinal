@@ -82,13 +82,11 @@ export default function ViagensExecutadas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("POST", "/api/viagens-executadas", {
-        ...data,
-        fatura: fatura[0]?.name,
-      });
+      return await apiRequest("POST", "/api/viagens-executadas", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/viagens-executadas"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Viagem executada registrada com sucesso!",
