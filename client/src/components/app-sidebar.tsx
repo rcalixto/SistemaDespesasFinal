@@ -194,7 +194,7 @@ export function AppSidebar() {
         <Button
           variant="outline"
           className="w-full"
-          onClick={() => (window.location.href = "/api/auth/logout")}
+          onClick={() => (window.location.href = "/api/logout")}
           data-testid="button-logout-sidebar"
         >
           <LogOut className="w-4 h-4 mr-2" />
