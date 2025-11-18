@@ -22,9 +22,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, FileText, Receipt, TrendingUp } from "lucide-react";
-import { Filters } from "@/components/Filters";
-import { FileUpload } from "@/components/FileUpload";
+import { Plus, FileText, DollarSign, Calendar, Building2 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -33,8 +31,9 @@ import { z } from "zod";
 
 const formSchema = z.object({
   motivo: z.string().min(1, "Motivo é obrigatório"),
-  centroCusto: z.string().optional(),
   valorTotalSolicitado: z.coerce.number().positive("Valor deve ser maior que zero"),
+  centroCusto: z.string().min(1, "Centro de custo é obrigatório"),
+  justificativa: z.string().min(10, "Justificativa deve ter pelo menos 10 caracteres"),
   observacoes: z.string().optional(),
 });
 
@@ -42,7 +41,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function Reembolsos() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [anexos, setAnexos] = useState<File[]>([]);
   const { toast } = useToast();
 
   const { data: reembolsos = [], isLoading } = useQuery<Reembolso[]>({
@@ -52,30 +50,27 @@ export default function Reembolsos() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      
       motivo: "",
-      centroCusto: "",
       valorTotalSolicitado: 0,
+      centroCusto: "",
+      justificativa: "",
       observacoes: "",
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("POST", "/api/reembolsos", {
-        ...data,
-        anexos: anexos.map((f) => f.name),
-      });
+      return await apiRequest("POST", "/api/reembolsos", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reembolsos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Reembolso criado com sucesso!",
       });
       setDialogOpen(false);
       form.reset();
-      setAnexos([]);
     },
     onError: (error: Error) => {
       toast({
@@ -118,21 +113,29 @@ export default function Reembolsos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Reembolsos</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-4xl font-bold mb-2" style={{ color: "#004650" }}>
+            Reembolsos
+          </h1>
+          <p style={{ color: "#4A5458" }}>
             Solicite reembolsos de despesas corporativas
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" data-testid="new-reembolso">
+            <Button
+              className="gap-2"
+              data-testid="button-new-reembolso"
+              style={{ backgroundColor: "#FFC828", color: "#004650" }}
+            >
               <Plus className="w-4 h-4" />
               Nova Solicitação
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nova Solicitação de Reembolso</DialogTitle>
+              <DialogTitle style={{ color: "#004650" }}>
+                Nova Solicitação de Reembolso
+              </DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -141,10 +144,10 @@ export default function Reembolsos() {
                   name="motivo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Motivo *</FormLabel>
+                      <FormLabel style={{ color: "#004650" }}>Motivo *</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Descreva o motivo do reembolso"
+                        <Input
+                          placeholder="Ex: Hospedagem em viagem a trabalho"
                           {...field}
                           data-testid="input-motivo"
                         />
@@ -159,12 +162,35 @@ export default function Reembolsos() {
                   name="centroCusto"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Centro de Custo</FormLabel>
+                      <FormLabel style={{ color: "#004650" }}>
+                        Centro de Custo *
+                      </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Ex: Marketing"
+                          placeholder="Ex: CC-001 - Marketing"
                           {...field}
                           data-testid="input-centro-custo"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="justificativa"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ color: "#004650" }}>
+                        Justificativa *
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Descreva a justificativa para o reembolso..."
+                          rows={4}
+                          {...field}
+                          data-testid="textarea-justificativa"
                         />
                       </FormControl>
                       <FormMessage />
@@ -177,14 +203,16 @@ export default function Reembolsos() {
                   name="valorTotalSolicitado"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Total (R$) *</FormLabel>
+                      <FormLabel style={{ color: "#004650" }}>
+                        Valor Total Solicitado *
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
+                          min="0"
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
                           data-testid="input-valor"
                         />
                       </FormControl>
@@ -198,12 +226,15 @@ export default function Reembolsos() {
                   name="observacoes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Observações</FormLabel>
+                      <FormLabel style={{ color: "#004650" }}>
+                        Observações
+                      </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Informações adicionais (opcional)"
+                          placeholder="Observações adicionais (opcional)"
+                          rows={3}
                           {...field}
-                          data-testid="input-observacoes"
+                          data-testid="textarea-observacoes"
                         />
                       </FormControl>
                       <FormMessage />
@@ -211,49 +242,71 @@ export default function Reembolsos() {
                   )}
                 />
 
-                <div>
-                  <Label className="mb-2 block">
-                    Anexar Comprovantes e Notas Fiscais *
-                  </Label>
-                  <FileUpload onUploadSuccess={setAnexos} maxFiles={10} />
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                    data-testid="button-cancel"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    data-testid="button-submit"
+                    style={{ backgroundColor: "#004650", color: "white" }}
+                  >
+                    {createMutation.isPending ? "Salvando..." : "Criar Reembolso"}
+                  </Button>
                 </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={createMutation.isPending}
-                  data-testid="submit-reembolso"
-                >
-                  {createMutation.isPending ? "Enviando..." : "Solicitar Reembolso"}
-                </Button>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="border-l-4 border-l-accent">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4" style={{ borderLeftColor: "#004650" }}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Solicitações</p>
-                <p className="text-3xl font-bold text-foreground mt-1">
+                <p className="text-sm font-medium" style={{ color: "#4A5458" }}>
+                  Total de Reembolsos
+                </p>
+                <p
+                  className="text-3xl font-bold mt-2"
+                  style={{ color: "#004650" }}
+                  data-testid="summary-total"
+                >
                   {summary.total}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {formatCurrency(summary.totalValue)} acumulado
+              </div>
+              <FileText className="w-8 h-8" style={{ color: "#004650", opacity: 0.2 }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4" style={{ borderLeftColor: "#004650" }}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium" style={{ color: "#4A5458" }}>
+                  Valor Total
+                </p>
+                <p
+                  className="text-3xl font-bold mt-2"
+                  style={{ color: "#004650" }}
+                  data-testid="summary-total-value"
+                >
+                  {formatCurrency(summary.totalValue)}
                 </p>
               </div>
-              <div className="p-3 bg-accent/10 rounded-full">
-                <Receipt className="w-5 h-5 text-accent-foreground" />
-              </div>
+              <DollarSign className="w-8 h-8" style={{ color: "#004650", opacity: 0.2 }} />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Filters onFilterChange={() => {}} />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

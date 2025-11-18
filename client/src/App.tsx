@@ -10,16 +10,16 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Adiantamentos from "@/pages/adiantamentos";
+import Reembolsos from "@/pages/reembolsos";
 import type { User } from "@shared/schema";
 
-// Lazy load pages that don't exist yet
-const Reembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold">Reembolsos - Em breve</h1></div>;
-const Passagens = () => <div className="p-8"><h1 className="text-2xl font-bold">Passagens Aéreas - Em breve</h1></div>;
-const Hospedagens = () => <div className="p-8"><h1 className="text-2xl font-bold">Hospedagens - Em breve</h1></div>;
-const ViagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold">Viagens Executadas - Em breve</h1></div>;
-const HospedagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold">Hospedagens Executadas - Em breve</h1></div>;
-const PrestacaoAdiantamentos = () => <div className="p-8"><h1 className="text-2xl font-bold">Prestação de Adiantamentos - Em breve</h1></div>;
-const PrestacaoReembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold">Prestação de Reembolsos - Em breve</h1></div>;
+// Placeholder pages for routes not yet implemented
+const Passagens = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Passagens Aéreas - Em breve</h1></div>;
+const Hospedagens = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Hospedagens - Em breve</h1></div>;
+const ViagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Viagens Executadas - Em breve</h1></div>;
+const HospedagensExecutadas = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Hospedagens Executadas - Em breve</h1></div>;
+const PrestacaoAdiantamentos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Adiantamentos - Em breve</h1></div>;
+const PrestacaoReembolsos = () => <div className="p-8"><h1 className="text-2xl font-bold" style={{ color: "#004650" }}>Prestação de Reembolsos - Em breve</h1></div>;
 
 function AuthenticatedRouter() {
   return (

@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+
 export default function Landing() {
   const handleLogin = () => {
     window.location.href = "/api/auth/login";
@@ -30,23 +32,17 @@ export default function Landing() {
       </p>
 
       {/* BOTÃO LOGIN */}
-      <button
+      <Button
         onClick={handleLogin}
         data-testid="button-login"
-        className="px-8 py-3 rounded-lg font-semibold transition shadow-md"
+        className="px-8 py-3 rounded-lg font-semibold hover-elevate active-elevate-2"
         style={{
           backgroundColor: "#FFC828",
           color: "#004650",
         }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.backgroundColor = "#ffb800";
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.backgroundColor = "#FFC828";
-        }}
       >
         Entrar com Replit Auth
-      </button>
+      </Button>
 
       {/* RODAPÉ */}
       <div className="mt-12 text-sm" style={{ color: "#ECEFF0" }}>
