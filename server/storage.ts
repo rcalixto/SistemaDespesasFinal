@@ -110,6 +110,7 @@ export interface IStorage {
   getReembolsoById(id: number): Promise<Reembolso | undefined>;
   createReembolsoWithItens(reembolso: InsertReembolso, itens: InsertReembolsoItem[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
   updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined>;
+  updateReembolsoWithItens(id: number, data: Partial<Reembolso>, itens: InsertReembolsoItem[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
   deleteReembolso(id: number, userId: string): Promise<Reembolso | undefined>;
 
   // Itens de Despesa do Reembolso
@@ -555,6 +556,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reembolsos.id, id))
       .returning();
     return result[0];
+  }
+
+  async updateReembolsoWithItens(
+    id: number,
+    reembolsoData: Partial<Reembolso>,
+    itens: InsertReembolsoItem[]
+  ): Promise<Reembolso & { itens: ReembolsoItem[] }> {
+    // Validate itens array is not empty
+    if (!itens || itens.length === 0) {
+      throw new Error("Reembolso deve ter pelo menos um item de despesa");
+    }
+
+    return await db.transaction(async (tx) => {
+      // Delete old itens
+      await tx
+        .delete(reembolsoItens)
+        .where(eq(reembolsoItens.reembolsoId, id));
+
+      // Calculate total from itens (server-side, don't trust client)
+      const valorTotalSolicitado = itens.reduce(
+        (sum, item) => sum + Number(item.valor),
+        0
+      );
+
+      // Update reembolso with server-calculated total
+      const [reembolso] = await tx
+        .update(reembolsos)
+        .set({ 
+          ...reembolsoData, 
+          valorTotalSolicitado: valorTotalSolicitado.toFixed(2),
+          updatedAt: new Date() 
+        })
+        .where(eq(reembolsos.id, id))
+        .returning();
+      
+      // Create new itens
+      const createdItens: ReembolsoItem[] = [];
+      for (const item of itens) {
+        const [createdItem] = await tx
+          .insert(reembolsoItens)
+          .values({ 
+            ...item, 
+            reembolsoId: reembolso.id,
+            dataDespesa: new Date(item.dataDespesa) 
+          })
+          .returning();
+        createdItens.push(createdItem);
+      }
+      
+      return { ...reembolso, itens: createdItens };
+    });
   }
 
   async deleteReembolso(id: number, userId: string): Promise<Reembolso | undefined> {
