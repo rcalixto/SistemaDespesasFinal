@@ -76,11 +76,6 @@ export function AppSidebar() {
       url: "/prestacao-adiantamentos",
       icon: ClipboardCheck,
     },
-    {
-      title: "Prestação de Reembolsos",
-      url: "/prestacao-reembolsos",
-      icon: ClipboardCheck,
-    },
   ];
 
   return (
