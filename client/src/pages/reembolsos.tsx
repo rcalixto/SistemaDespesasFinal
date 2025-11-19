@@ -28,11 +28,13 @@ import {
 } from "@/components/ui/select";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, FileText, DollarSign, Trash2, Receipt } from "lucide-react";
+import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Reembolso } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
 
 const CATEGORIAS = [
@@ -50,6 +52,7 @@ const itemSchema = z.object({
   categoria: z.string().min(1, "Categoria é obrigatória"),
   descricao: z.string().min(1, "Descrição é obrigatória"),
   valor: z.coerce.number().positive("Valor deve ser maior que zero"),
+  dataDespesa: z.string().min(1, "Data da despesa é obrigatória"),
   comprovante: z.string().optional(),
 });
 
@@ -83,16 +86,80 @@ export default function Reembolsos() {
           categoria: "",
           descricao: "",
           valor: 0,
+          dataDespesa: "",
           comprovante: "",
         },
       ],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "itens",
   });
+
+  // Handler para obter URL de upload
+  const handleGetUploadUrl = (index: number) => {
+    return async () => {
+      try {
+        const response = await fetch("/api/objects/upload", {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await response.json();
+        return {
+          method: "PUT" as const,
+          url: data.uploadURL,
+        };
+      } catch (error) {
+        toast({
+          title: "Erro ao preparar upload",
+          description: "Não foi possível obter URL de upload",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    };
+  };
+
+  // Handler após completar upload
+  const handleUploadComplete = (index: number) => {
+    return async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+      if (result.successful && result.successful.length > 0) {
+        const uploadURL = result.successful[0]?.uploadURL;
+        
+        try {
+          // Definir ACL do comprovante
+          const response = await fetch("/api/comprovantes", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ comprovanteURL: uploadURL }),
+          });
+          
+          const data = await response.json();
+          
+          // Atualizar item com caminho do comprovante
+          const currentItem = form.getValues(`itens.${index}`);
+          update(index, {
+            ...currentItem,
+            comprovante: data.objectPath,
+          });
+          
+          toast({
+            title: "Comprovante anexado!",
+            description: "O arquivo foi enviado com sucesso.",
+          });
+        } catch (error) {
+          toast({
+            title: "Erro ao processar comprovante",
+            description: "O arquivo foi enviado mas houve erro ao processar",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
@@ -287,6 +354,7 @@ export default function Reembolsos() {
                           categoria: "",
                           descricao: "",
                           valor: 0,
+                          dataDespesa: "",
                           comprovante: "",
                         })
                       }
@@ -399,23 +467,65 @@ export default function Reembolsos() {
 
                           <FormField
                             control={form.control}
-                            name={`itens.${index}.comprovante`}
+                            name={`itens.${index}.dataDespesa`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel style={{ color: "#004650" }}>
-                                  Comprovante (URL)
+                                  Data da Despesa *
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    placeholder="https://exemplo.com/comprovante.pdf"
+                                    type="date"
                                     {...field}
-                                    data-testid={`input-comprovante-${index}`}
+                                    data-testid={`input-data-despesa-${index}`}
                                   />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
+
+                          <div>
+                            <FormLabel style={{ color: "#004650" }}>
+                              Comprovante (Nota Fiscal/Recibo)
+                            </FormLabel>
+                            <div className="mt-2">
+                              {form.watch(`itens.${index}.comprovante`) ? (
+                                <div className="flex items-center gap-2">
+                                  <Check className="h-4 w-4 text-green-600" />
+                                  <span className="text-xs text-muted-foreground">Anexado</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const currentItem = form.getValues(`itens.${index}`);
+                                      update(index, {
+                                        ...currentItem,
+                                        comprovante: "",
+                                      });
+                                    }}
+                                    data-testid={`button-remove-comprovante-${index}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <ObjectUploader
+                                  maxNumberOfFiles={1}
+                                  maxFileSize={10485760}
+                                  onGetUploadParameters={handleGetUploadUrl(index)}
+                                  onComplete={handleUploadComplete(index)}
+                                  buttonVariant="outline"
+                                  buttonSize="sm"
+                                  data-testid={`button-upload-${index}`}
+                                >
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Anexar
+                                </ObjectUploader>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </Card>
                     ))}
