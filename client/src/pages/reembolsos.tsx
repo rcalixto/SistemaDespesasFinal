@@ -9,6 +9,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -28,7 +38,7 @@ import {
 } from "@/components/ui/select";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X } from "lucide-react";
+import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X, Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { useToast } from "@/hooks/use-toast";
@@ -69,6 +79,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function Reembolsos() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Reembolso | null>(null);
   const { toast } = useToast();
 
   const { data: reembolsos = [], isLoading } = useQuery<Reembolso[]>({
@@ -166,24 +179,55 @@ export default function Reembolsos() {
         0
       );
 
-      return await apiRequest("POST", "/api/reembolsos", {
+      const payload = {
         ...data,
         valorTotalSolicitado,
         itens: data.itens.map((item) => ({
           ...item,
           valor: Number(item.valor),
         })),
-      });
+      };
+
+      if (editingId) {
+        return await apiRequest("PATCH", `/api/reembolsos/${editingId}`, payload);
+      }
+      return await apiRequest("POST", "/api/reembolsos", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reembolsos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
-        description: "Reembolso criado com sucesso!",
+        description: editingId
+          ? "Reembolso atualizado com sucesso!"
+          : "Reembolso criado com sucesso!",
       });
       setDialogOpen(false);
+      setEditingId(null);
       form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/reembolsos/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reembolsos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Sucesso",
+        description: "Reembolso excluído com sucesso!",
+      });
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     },
     onError: (error: Error) => {
       toast({
@@ -211,6 +255,50 @@ export default function Reembolsos() {
     return new Intl.DateTimeFormat("pt-BR").format(d);
   };
 
+  const handleEdit = (item: Reembolso) => {
+    setEditingId(item.id);
+    // Reset form with reembolso data - need to fetch items separately
+    form.reset({
+      motivo: item.motivo,
+      centroCusto: item.centroCusto,
+      justificativa: item.justificativa,
+      observacoes: item.observacoes || "",
+      itens: item.itens && item.itens.length > 0 ? item.itens.map(i => ({
+        categoria: i.categoria,
+        descricao: i.descricao,
+        valor: i.valor,
+        dataDespesa: i.dataDespesa ? new Date(i.dataDespesa).toISOString().split('T')[0] : "",
+        comprovante: i.comprovante || "",
+      })) : [{
+        categoria: "",
+        descricao: "",
+        valor: 0,
+        dataDespesa: "",
+        comprovante: "",
+      }],
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (item: Reembolso) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete.id);
+    }
+  };
+
+  const canEdit = (item: Reembolso) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
+  const canDelete = (item: Reembolso) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
   const watchedItens = form.watch("itens");
   const totalCalculado = watchedItens?.reduce(
     (sum, item) => sum + (Number(item?.valor) || 0),
@@ -236,7 +324,16 @@ export default function Reembolsos() {
             Solicite reembolsos de despesas corporativas com comprovantes
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog 
+          open={dialogOpen} 
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingId(null);
+              form.reset();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               className="gap-2"
@@ -250,7 +347,7 @@ export default function Reembolsos() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle style={{ color: "#004650" }}>
-                Nova Solicitação de Reembolso
+                {editingId ? "Editar Reembolso" : "Nova Solicitação de Reembolso"}
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
@@ -567,7 +664,12 @@ export default function Reembolsos() {
                       data-testid="button-submit"
                       style={{ backgroundColor: "#004650", color: "white" }}
                     >
-                      {createMutation.isPending ? "Salvando..." : "Criar Reembolso"}
+                      {createMutation.isPending 
+                        ? "Salvando..." 
+                        : editingId 
+                          ? "Atualizar Reembolso" 
+                          : "Criar Reembolso"
+                      }
                     </Button>
                   </div>
                 </div>
@@ -669,11 +771,37 @@ export default function Reembolsos() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right ml-6">
-                    <p className="text-2xl font-bold text-accent-foreground mb-2">
-                      {formatCurrency(item.valorTotalSolicitado)}
-                    </p>
-                    <StatusBadge status={item.status || "Solicitado"} />
+                  <div className="flex flex-col items-end gap-3 ml-6">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-accent-foreground mb-2">
+                        {formatCurrency(item.valorTotalSolicitado)}
+                      </p>
+                      <StatusBadge status={item.status || "Solicitado"} />
+                    </div>
+                    {(canEdit(item) || canDelete(item)) && (
+                      <div className="flex gap-2">
+                        {canEdit(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {canDelete(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(item)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -681,6 +809,32 @@ export default function Reembolsos() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o reembolso <strong>#{itemToDelete?.id}</strong> com valor de{" "}
+              <strong>{itemToDelete ? formatCurrency(itemToDelete.valorTotalSolicitado) : ""}</strong>? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

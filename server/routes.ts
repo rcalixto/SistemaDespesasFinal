@@ -779,6 +779,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/reembolsos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const reembolso = await storage.getReembolsoById(id);
+      if (!reembolso) {
+        return res.status(404).json({ message: "Reembolso not found" });
+      }
+
+      // Check permissions
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = reembolso.colaboradorId === colaborador.id;
+
+      const canEdit = isAdmin || 
+        (isOwner && (reembolso.status === "Solicitado" || reembolso.status === "Rejeitado"));
+
+      if (!canEdit) {
+        return res.status(403).json({ 
+          message: "Não é possível editar este reembolso" 
+        });
+      }
+
+      // Extract itens and remove valorTotalSolicitado and colaboradorId from request body
+      const { itens, valorTotalSolicitado, colaboradorId, ...reembolsoData } = req.body;
+      
+      // Convert date strings to Date objects if present
+      if (reembolsoData.dataSolicitacao && typeof reembolsoData.dataSolicitacao === 'string') {
+        reembolsoData.dataSolicitacao = new Date(reembolsoData.dataSolicitacao);
+      }
+      
+      // Validate itens if provided
+      const validatedItens: InsertReembolsoItem[] = [];
+      if (itens && Array.isArray(itens) && itens.length > 0) {
+        for (const item of itens) {
+          const { reembolsoId, ...itemData } = item;
+          
+          // Convert date strings to Date objects for items
+          if (itemData.dataDespesa && typeof itemData.dataDespesa === 'string') {
+            itemData.dataDespesa = new Date(itemData.dataDespesa);
+          }
+          
+          const validatedItem = insertReembolsoItemSchema
+            .omit({ reembolsoId: true })
+            .parse(itemData);
+          validatedItens.push(validatedItem as InsertReembolsoItem);
+        }
+      }
+      
+      // Update reembolso and itens in a transaction
+      const result = await storage.updateReembolsoWithItens(id, reembolsoData, validatedItens);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.delete("/api/reembolsos/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
