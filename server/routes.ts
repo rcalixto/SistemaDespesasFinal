@@ -954,12 +954,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/passagens", isAuthenticated, async (req, res) => {
+  app.post("/api/passagens", isAuthenticated, upload.array('anexos'), async (req, res) => {
     try {
       const colaborador = await getCurrentColaborador(req);
       if (!colaborador) {
         return res.status(404).json({ message: "Colaborador not found" });
       }
+
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
 
       const validated = insertPassagemAereaSchema.parse({
         ...req.body,
@@ -967,13 +970,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Convert string dates to Date objects for database
-      const dataToInsert = {
+      const dataToInsert: any = {
         ...validated,
         dataIda: new Date(validated.dataIda),
         dataVolta: validated.dataVolta ? new Date(validated.dataVolta) : undefined,
       };
 
-      const result = await storage.createPassagemAerea(dataToInsert as any);
+      // Add file metadata to anexos array
+      if (files.length > 0) {
+        dataToInsert.anexos = files.map(file => ({
+          originalName: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        }));
+      }
+
+      const result = await storage.createPassagemAerea(dataToInsert);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1023,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/passagens/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/passagens/:id", isAuthenticated, upload.array('anexos'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const colaborador = await getCurrentColaborador(req);
@@ -1039,13 +1052,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canEdit = isAdmin || (isOwner && (passagem.status === "Solicitado" || passagem.status === "Rejeitado"));
       if (!canEdit) return res.status(403).json({ message: "Você não pode editar esta passagem" });
 
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
+
       // Validar dados (sem colaboradorId no payload, será preservado do registro existente)
       const dataToUpdate: any = { ...req.body };
       if (dataToUpdate.dataIda) dataToUpdate.dataIda = new Date(dataToUpdate.dataIda);
       if (dataToUpdate.dataVolta) dataToUpdate.dataVolta = new Date(dataToUpdate.dataVolta);
       delete dataToUpdate.colaboradorId; // Segurança: não permitir alteração do colaboradorId
 
-      const updated = await storage.updatePassagemAerea(id, dataToUpdate as any);
+      // Handle anexos: preserve old ones and add new files
+      if (files.length > 0) {
+        const existingAnexos = Array.isArray(passagem.anexos) ? passagem.anexos : [];
+        const newAnexos = files.map(file => ({
+          originalName: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        }));
+        dataToUpdate.anexos = [...existingAnexos, ...newAnexos];
+      }
+
+      const updated = await storage.updatePassagemAerea(id, dataToUpdate);
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1123,12 +1151,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/hospedagens", isAuthenticated, async (req, res) => {
+  app.post("/api/hospedagens", isAuthenticated, upload.array('anexos'), async (req, res) => {
     try {
       const colaborador = await getCurrentColaborador(req);
       if (!colaborador) {
         return res.status(404).json({ message: "Colaborador not found" });
       }
+
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
 
       const validated = insertHospedagemSchema.parse({
         ...req.body,
@@ -1136,13 +1167,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Convert string dates to Date objects for database
-      const dataToInsert = {
+      const dataToInsert: any = {
         ...validated,
         dataCheckin: new Date(validated.dataCheckin),
         dataCheckout: new Date(validated.dataCheckout),
       };
 
-      const result = await storage.createHospedagem(dataToInsert as any);
+      // Add file metadata to anexos array
+      if (files.length > 0) {
+        dataToInsert.anexos = files.map(file => ({
+          originalName: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        }));
+      }
+
+      const result = await storage.createHospedagem(dataToInsert);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1187,6 +1228,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updated);
     } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.patch("/api/hospedagens/:id", isAuthenticated, upload.array('anexos'), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) return res.status(404).json({ message: "Colaborador not found" });
+
+      const hospedagem = await storage.getHospedagemById(id);
+      if (!hospedagem) return res.status(404).json({ message: "Hospedagem not found" });
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const isAdmin = roles.some(r => r.role === "Administrador");
+      const isOwner = hospedagem.colaboradorId === colaborador.id;
+      
+      const canEdit = isAdmin || (isOwner && (hospedagem.status === "Solicitado" || hospedagem.status === "Rejeitado"));
+      if (!canEdit) return res.status(403).json({ message: "Você não pode editar esta hospedagem" });
+
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
+
+      // Validar dados (sem colaboradorId no payload, será preservado do registro existente)
+      const dataToUpdate: any = { ...req.body };
+      if (dataToUpdate.dataCheckin) dataToUpdate.dataCheckin = new Date(dataToUpdate.dataCheckin);
+      if (dataToUpdate.dataCheckout) dataToUpdate.dataCheckout = new Date(dataToUpdate.dataCheckout);
+      delete dataToUpdate.colaboradorId; // Segurança: não permitir alteração do colaboradorId
+
+      // Handle anexos: preserve old ones and add new files
+      if (files.length > 0) {
+        const existingAnexos = Array.isArray(hospedagem.anexos) ? hospedagem.anexos : [];
+        const newAnexos = files.map(file => ({
+          originalName: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        }));
+        dataToUpdate.anexos = [...existingAnexos, ...newAnexos];
+      }
+
+      const updated = await storage.updateHospedagem(id, dataToUpdate);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       res.status(500).json({ message: (error as Error).message });
     }
   });

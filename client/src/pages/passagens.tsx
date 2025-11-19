@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Plane, Calendar, Hotel, Pencil, Trash2 } from "lucide-react";
+import { Plus, Plane, Calendar, Hotel, Pencil, Trash2, Upload, File, X } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
@@ -61,6 +61,7 @@ export default function Passagens() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<PassagemAerea | null>(null);
+  const [anexos, setAnexos] = useState<File[]>([]);
   const { toast } = useToast();
 
   const { data: passagens = [], isLoading } = useQuery<PassagemAerea[]>({
@@ -89,10 +90,40 @@ export default function Passagens() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      if (editingId) {
-        return await apiRequest("PATCH", `/api/passagens/${editingId}`, data);
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add text fields
+      formData.append('origem', data.origem);
+      formData.append('destino', data.destino);
+      formData.append('dataIda', data.dataIda);
+      if (data.dataVolta) formData.append('dataVolta', data.dataVolta);
+      formData.append('objetivo', data.objetivo);
+      if (data.diretoria) formData.append('diretoria', data.diretoria);
+      if (data.observacoes) formData.append('observacoes', data.observacoes);
+      if (data.hospedagemId) formData.append('hospedagemId', String(data.hospedagemId));
+      
+      // Add files
+      anexos.forEach(file => formData.append('anexos', file));
+
+      const url = editingId 
+        ? `/api/passagens/${editingId}`
+        : '/api/passagens';
+      
+      const method = editingId ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao salvar passagem');
       }
-      return await apiRequest("POST", "/api/passagens", data);
+
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/passagens"] });
@@ -105,6 +136,7 @@ export default function Passagens() {
       });
       setDialogOpen(false);
       setEditingId(null);
+      setAnexos([]);
       form.reset();
     },
     onError: (error: Error) => {
@@ -195,6 +227,7 @@ export default function Passagens() {
             setDialogOpen(open);
             if (!open) {
               setEditingId(null);
+              setAnexos([]);
               form.reset();
             }
           }}
@@ -359,6 +392,52 @@ export default function Passagens() {
                   )}
                 />
 
+                <div className="space-y-2">
+                  <FormLabel>Anexos</FormLabel>
+                  <div className="border-2 border-dashed rounded-md p-4">
+                    <div className="flex items-center justify-center">
+                      <label className="cursor-pointer flex flex-col items-center">
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          Clique para selecionar arquivos
+                        </span>
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              setAnexos(prev => [...prev, ...Array.from(e.target.files!)]);
+                            }
+                          }}
+                          data-testid="input-anexos"
+                        />
+                      </label>
+                    </div>
+                    {anexos.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm font-medium">Arquivos selecionados:</p>
+                        {anexos.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
+                            <div className="flex items-center gap-2">
+                              <File className="w-4 h-4" />
+                              <span className="text-sm">{file.name}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setAnexos(prev => prev.filter((_, i) => i !== index))}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
@@ -423,6 +502,25 @@ export default function Passagens() {
                         </span>
                       </div>
                     </div>
+                    {item.anexos && Array.isArray(item.anexos) && item.anexos.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Anexos:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {item.anexos.map((anexo: any, idx: number) => (
+                            <a
+                              key={idx}
+                              href={`/uploads/${anexo.path.split('/').pop()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                            >
+                              <File className="w-3 h-3" />
+                              {anexo.originalName}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-3">
                     <StatusBadge status={item.status || "Solicitado"} />

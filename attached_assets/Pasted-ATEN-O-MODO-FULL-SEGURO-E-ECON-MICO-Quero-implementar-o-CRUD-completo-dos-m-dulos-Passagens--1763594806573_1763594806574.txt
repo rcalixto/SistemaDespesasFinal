@@ -1,0 +1,87 @@
+ATENÇÃO — MODO FULL SEGURO E ECONÔMICO
+
+Quero implementar o CRUD completo dos módulos **Passagens** e **Hospedagem**, seguindo EXATAMENTE o mesmo padrão já aprovado e funcional do módulo de **Reembolsos**, incluindo:
+
+- CRUD completo (CREATE, PATCH, DELETE)
+- Itens dinâmicos
+- Datas convertidas para string
+- Valores tratados como string no input
+- Soft delete
+- Condições por status (Solicitado / Rejeitado)
+- Categorias com opção “Outro (digitar)”
+- Upload de múltiplos arquivos via FormData
+- Servir anexos (preview / download)
+- Preservar anexos antigos na edição
+- Links clicáveis para visualizar ou baixar anexos
+
+⚠️ IMPORTANTE:
+Trabalhe APENAS nos arquivos referentes a Passagens e Hospedagem:
+
+1) client/src/pages/passagens.tsx  
+2) client/src/pages/hospedagem.tsx  
+3) server/routes.ts (somente rotas de passagens e hospedagem)  
+4) server/storage.ts (somente funções de passagens e hospedagem)
+
+NÃO alterar:
+- Reembolsos (já está pronto)
+- Adiantamentos
+- Outros módulos
+- Schemas globais
+- Autenticação
+- Estrutura global do backend
+
+==============================
+🟦 PADRÃO A SEGUIR (OBRIGATÓRIO)
+==============================
+
+O módulo deve seguir exatamente as funcionalidades já implementadas em Reembolsos:
+
+1️⃣ FRONTEND (passagens.tsx e hospedagem.tsx)
+- createMutation usando FormData (multipart/form-data)
+- updateMutation usando FormData (multipart/form-data)
+- deleteMutation com soft delete
+- Campos:
+    • datas → string
+    • valores → string no input, number só no submit
+- Itens dinâmicos (add/remove)
+- Categorias padrão + “Outro (digitar)” com input extra
+- Exibir comprovações já salvas + novos anexos
+- Links clicáveis para download dos anexos
+
+2️⃣ BACKEND (server/routes.ts)
+- POST /api/passagens → upload.array(“comprovantes”)
+- PATCH /api/passagens/:id → upload.array(“comprovantes”)
+- DELETE já existente → manter
+- POST /api/hospedagem → upload.array(“comprovantes”)
+- PATCH /api/hospedagem/:id → upload.array(“comprovantes”)
+- DELETE já existente → manter
+- Extrair req.body + req.files
+- JSON.parse nos itens
+- Não apagar anexos antigos (apenas adicionar os novos)
+
+3️⃣ STORAGE (server/storage.ts)
+- Criar funções:
+    updatePassagemWithItens()
+    updateHospedagemWithItens()
+- Seguir padrão EXATO de:
+    updateReembolsoWithItens()
+- Salvar anexos com:
+    {
+      originalName,
+      path,
+      mimetype,
+      size
+    }
+
+4️⃣ LINKS DE DOWNLOAD
+- Já existe rota /uploads
+- Apenas gerar URLs para os anexos no frontend
+
+==============================
+
+OBJETIVO:
+Entregar FULL CRUD **funcional, testável e idêntico ao módulo de Reembolsos**, porém agora aplicado aos módulos **Passagens** e **Hospedagem**, incluindo upload e visualização de anexos.
+
+==============================
+
+Pode aplicar TUDO conforme descrito, mantendo baixo custo e sem alterar nada fora do escopo.

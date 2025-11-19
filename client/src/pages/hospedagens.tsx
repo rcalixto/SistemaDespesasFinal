@@ -9,6 +9,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +33,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Hotel, Calendar, MapPin, Plane } from "lucide-react";
+import { Plus, Hotel, Calendar, MapPin, Plane, Pencil, Trash2, Upload, File, X } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
@@ -48,6 +58,10 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function Hospedagens() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Hospedagem | null>(null);
+  const [anexos, setAnexos] = useState<File[]>([]);
   const { toast } = useToast();
 
   const { data: hospedagens = [], isLoading } = useQuery<Hospedagem[]>({
@@ -76,17 +90,77 @@ export default function Hospedagens() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("POST", "/api/hospedagens", data);
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add text fields
+      formData.append('cidade', data.cidade);
+      if (data.estado) formData.append('estado', data.estado);
+      formData.append('dataCheckin', data.dataCheckin);
+      formData.append('dataCheckout', data.dataCheckout);
+      formData.append('objetivo', data.objetivo);
+      if (data.diretoria) formData.append('diretoria', data.diretoria);
+      if (data.observacoes) formData.append('observacoes', data.observacoes);
+      if (data.passagemAereaId) formData.append('passagemAereaId', String(data.passagemAereaId));
+      
+      // Add files
+      anexos.forEach(file => formData.append('anexos', file));
+
+      const url = editingId 
+        ? `/api/hospedagens/${editingId}`
+        : '/api/hospedagens';
+      
+      const method = editingId ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao salvar hospedagem');
+      }
+
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hospedagens"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
-        description: "Solicitação de hospedagem criada com sucesso!",
+        description: editingId
+          ? "Hospedagem atualizada com sucesso!"
+          : "Solicitação de hospedagem criada com sucesso!",
       });
       setDialogOpen(false);
+      setEditingId(null);
+      setAnexos([]);
       form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/hospedagens/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hospedagens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Sucesso",
+        description: "Hospedagem excluída com sucesso!",
+      });
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     },
     onError: (error: Error) => {
       toast({
@@ -102,6 +176,40 @@ export default function Hospedagens() {
     return new Intl.DateTimeFormat("pt-BR").format(d);
   };
 
+  const handleEdit = (item: Hospedagem) => {
+    setEditingId(item.id);
+    form.reset({
+      cidade: item.cidade,
+      estado: item.estado || "",
+      dataCheckin: item.dataCheckin ? new Date(item.dataCheckin).toISOString().split('T')[0] : "",
+      dataCheckout: item.dataCheckout ? new Date(item.dataCheckout).toISOString().split('T')[0] : "",
+      objetivo: item.objetivo,
+      diretoria: item.diretoria || "",
+      observacoes: item.observacoes || "",
+      passagemAereaId: item.passagemAereaId || null,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (item: Hospedagem) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete.id);
+    }
+  };
+
+  const canEdit = (item: Hospedagem) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
+  const canDelete = (item: Hospedagem) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -111,7 +219,17 @@ export default function Hospedagens() {
             Solicite hospedagens para viagens corporativas
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog 
+          open={dialogOpen} 
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingId(null);
+              setAnexos([]);
+              form.reset();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="gap-2" data-testid="new-hospedagem">
               <Plus className="w-4 h-4" />
@@ -120,7 +238,9 @@ export default function Hospedagens() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Nova Solicitação de Hospedagem</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Editar Hospedagem" : "Nova Solicitação de Hospedagem"}
+              </DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -270,13 +390,64 @@ export default function Hospedagens() {
                   )}
                 />
 
+                <div className="space-y-2">
+                  <FormLabel>Anexos</FormLabel>
+                  <div className="border-2 border-dashed rounded-md p-4">
+                    <div className="flex items-center justify-center">
+                      <label className="cursor-pointer flex flex-col items-center">
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          Clique para selecionar arquivos
+                        </span>
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              setAnexos(prev => [...prev, ...Array.from(e.target.files!)]);
+                            }
+                          }}
+                          data-testid="input-anexos"
+                        />
+                      </label>
+                    </div>
+                    {anexos.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm font-medium">Arquivos selecionados:</p>
+                        {anexos.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
+                            <div className="flex items-center gap-2">
+                              <File className="w-4 h-4" />
+                              <span className="text-sm">{file.name}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setAnexos(prev => prev.filter((_, i) => i !== index))}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
                   disabled={createMutation.isPending}
                   data-testid="submit-hospedagem"
                 >
-                  {createMutation.isPending ? "Enviando..." : "Solicitar Hospedagem"}
+                  {createMutation.isPending 
+                    ? "Salvando..." 
+                    : editingId 
+                      ? "Atualizar Hospedagem" 
+                      : "Solicitar Hospedagem"
+                  }
                 </Button>
               </form>
             </Form>
@@ -328,9 +499,52 @@ export default function Hospedagens() {
                         </span>
                       </div>
                     </div>
+                    {item.anexos && Array.isArray(item.anexos) && item.anexos.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Anexos:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {item.anexos.map((anexo: any, idx: number) => (
+                            <a
+                              key={idx}
+                              href={`/uploads/${anexo.path.split('/').pop()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                            >
+                              <File className="w-3 h-3" />
+                              {anexo.originalName}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="ml-6">
+                  <div className="flex flex-col items-end gap-3">
                     <StatusBadge status={item.status || "Solicitado"} />
+                    {(canEdit(item) || canDelete(item)) && (
+                      <div className="flex gap-2">
+                        {canEdit(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {canDelete(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(item)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -338,6 +552,32 @@ export default function Hospedagens() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a hospedagem em{" "}
+              <strong>{itemToDelete?.cidade}</strong>? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
