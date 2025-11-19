@@ -76,9 +76,21 @@ Preferred communication style: Simple, everyday language.
 - Authentication middleware (`isAuthenticated`)
 - Role-based authorization middleware
 
+**Email Notification System** (November 2025):
+- **Provider**: SMTP server using Nodemailer configured with ABERT's corporate email (sistema@abert.org.br)
+- **Environment Variables**: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD stored as Replit Secrets
+- **Email Templates**: Professional HTML emails with ABERT branding (blue #004650, yellow #FFC828)
+- **Notification Triggers**:
+  - **Adiantamentos**: Created → Diretoria | Approved by Diretoria → Financeiro + Solicitante | Approved by Financeiro → Solicitante | Rejected → Solicitante
+  - **Reembolsos**: Created → Diretoria | Approved by Financeiro → Solicitante | Rejected → Solicitante
+- **Features**: Direct links to system, status badges, value formatting, Brazilian Portuguese localization
+- **Error Handling**: Email failures logged but don't block request completion (fire-and-forget pattern)
+- **Role Lookup**: `getColaboradoresByRole()` retrieves all users with specific role for multi-recipient notifications
+
 **File Structure**:
-- `/server/routes.ts` - Route registration and handler definitions
+- `/server/routes.ts` - Route registration and handler definitions with email notification hooks
 - `/server/storage.ts` - Data access interface and implementations
+- `/server/emailService.ts` - Email templates and sending logic for all notification types
 - `/server/replitAuth.ts` - OpenID Connect authentication setup
 - `/server/middleware/roles.ts` - Authorization middleware
 - `/server/db.ts` - Database connection and Drizzle ORM initialization

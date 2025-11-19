@@ -64,6 +64,7 @@ export interface IStorage {
   getColaboradores(): Promise<Colaborador[]>;
   getColaboradorById(id: number): Promise<Colaborador | undefined>;
   getColaboradorByUserId(userId: string): Promise<Colaborador | undefined>;
+  getColaboradoresByRole(role: 'Diretoria' | 'Financeiro' | 'Administrador'): Promise<Colaborador[]>;
   createColaborador(data: InsertColaborador): Promise<Colaborador>;
   updateColaborador(id: number, data: Partial<InsertColaborador>): Promise<Colaborador | undefined>;
 
@@ -251,6 +252,24 @@ export class DatabaseStorage implements IStorage {
   async getColaboradorByUserId(userId: string): Promise<Colaborador | undefined> {
     const result = await db.select().from(colaboradores).where(eq(colaboradores.userId, userId));
     return result[0];
+  }
+
+  async getColaboradoresByRole(role: 'Diretoria' | 'Financeiro' | 'Administrador'): Promise<Colaborador[]> {
+    const result = await db
+      .select({
+        id: colaboradores.id,
+        userId: colaboradores.userId,
+        email: colaboradores.email,
+        nomeCompleto: colaboradores.nomeCompleto,
+        departamento: colaboradores.departamento,
+        diretoria: colaboradores.diretoria,
+        centroCusto: colaboradores.centroCusto,
+      })
+      .from(colaboradores)
+      .innerJoin(colaboradorRoles, eq(colaboradores.id, colaboradorRoles.colaboradorId))
+      .where(eq(colaboradorRoles.role, role));
+    
+    return result as Colaborador[];
   }
 
   async createColaborador(data: InsertColaborador): Promise<Colaborador> {
