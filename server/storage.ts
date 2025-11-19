@@ -108,9 +108,9 @@ export interface IStorage {
     dataFim?: string;
   }): Promise<Reembolso[]>;
   getReembolsoById(id: number): Promise<Reembolso | undefined>;
-  createReembolsoWithItens(reembolso: InsertReembolso, itens: InsertReembolsoItem[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
+  createReembolsoWithItens(reembolso: InsertReembolso, itens: InsertReembolsoItem[], files?: Express.Multer.File[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
   updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined>;
-  updateReembolsoWithItens(id: number, data: Partial<Reembolso>, itens: InsertReembolsoItem[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
+  updateReembolsoWithItens(id: number, data: Partial<Reembolso>, itens: InsertReembolsoItem[], files?: Express.Multer.File[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
   deleteReembolso(id: number, userId: string): Promise<Reembolso | undefined>;
 
   // Itens de Despesa do Reembolso
@@ -511,7 +511,8 @@ export class DatabaseStorage implements IStorage {
 
   async createReembolsoWithItens(
     reembolsoData: InsertReembolso,
-    itens: InsertReembolsoItem[]
+    itens: InsertReembolsoItem[],
+    files?: Express.Multer.File[]
   ): Promise<Reembolso & { itens: ReembolsoItem[] }> {
     // Validate itens array is not empty
     if (!itens || itens.length === 0) {
@@ -531,15 +532,41 @@ export class DatabaseStorage implements IStorage {
         .values({ ...reembolsoData, valorTotalSolicitado: valorTotalSolicitado.toFixed(2) })
         .returning();
       
+      // Map files by index (comprovante_0, comprovante_1, etc.)
+      const filesByIndex: Record<number, Express.Multer.File> = {};
+      if (files) {
+        files.forEach(file => {
+          const match = file.fieldname.match(/comprovante_(\d+)/);
+          if (match) {
+            const index = parseInt(match[1]);
+            filesByIndex[index] = file;
+          }
+        });
+      }
+      
       // Create itens
       const createdItens: ReembolsoItem[] = [];
-      for (const item of itens) {
+      for (let i = 0; i < itens.length; i++) {
+        const item = itens[i];
+        const file = filesByIndex[i];
+        
+        // If file exists for this index, save file path
+        const comprovanteValue = file 
+          ? JSON.stringify({
+              originalName: file.originalname,
+              path: file.path,
+              mimetype: file.mimetype,
+              size: file.size
+            })
+          : item.comprovante || "";
+        
         const [createdItem] = await tx
           .insert(reembolsoItens)
           .values({ 
             ...item, 
             reembolsoId: reembolso.id,
-            dataDespesa: new Date(item.dataDespesa) 
+            dataDespesa: new Date(item.dataDespesa),
+            comprovante: comprovanteValue
           })
           .returning();
         createdItens.push(createdItem);
@@ -561,7 +588,8 @@ export class DatabaseStorage implements IStorage {
   async updateReembolsoWithItens(
     id: number,
     reembolsoData: Partial<Reembolso>,
-    itens: InsertReembolsoItem[]
+    itens: InsertReembolsoItem[],
+    files?: Express.Multer.File[]
   ): Promise<Reembolso & { itens: ReembolsoItem[] }> {
     // Validate itens array is not empty
     if (!itens || itens.length === 0) {
@@ -591,15 +619,41 @@ export class DatabaseStorage implements IStorage {
         .where(eq(reembolsos.id, id))
         .returning();
       
+      // Map files by index (comprovante_0, comprovante_1, etc.)
+      const filesByIndex: Record<number, Express.Multer.File> = {};
+      if (files) {
+        files.forEach(file => {
+          const match = file.fieldname.match(/comprovante_(\d+)/);
+          if (match) {
+            const index = parseInt(match[1]);
+            filesByIndex[index] = file;
+          }
+        });
+      }
+      
       // Create new itens
       const createdItens: ReembolsoItem[] = [];
-      for (const item of itens) {
+      for (let i = 0; i < itens.length; i++) {
+        const item = itens[i];
+        const file = filesByIndex[i];
+        
+        // Preserve old comprovante if no new file, otherwise save new file
+        const comprovanteValue = file 
+          ? JSON.stringify({
+              originalName: file.originalname,
+              path: file.path,
+              mimetype: file.mimetype,
+              size: file.size
+            })
+          : item.comprovante || "";
+        
         const [createdItem] = await tx
           .insert(reembolsoItens)
           .values({ 
             ...item, 
             reembolsoId: reembolso.id,
-            dataDespesa: new Date(item.dataDespesa) 
+            dataDespesa: new Date(item.dataDespesa),
+            comprovante: comprovanteValue
           })
           .returning();
         createdItens.push(createdItem);

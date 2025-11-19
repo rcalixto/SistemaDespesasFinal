@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import multer from "multer";
 import {
   insertCentroCustoSchema,
   insertDiretoriaSchema,
@@ -24,6 +25,9 @@ import {
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import * as emailService from "./emailService";
+
+// Configure multer for file uploads
+const upload = multer({ dest: "uploads/" });
 
 // Helper to get current colaborador for logged-in user
 async function getCurrentColaborador(req: Request) {
@@ -663,16 +667,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/reembolsos", isAuthenticated, async (req, res) => {
+  app.post("/api/reembolsos", isAuthenticated, upload.any(), async (req, res) => {
     try {
       const colaborador = await getCurrentColaborador(req);
       if (!colaborador) {
         return res.status(404).json({ message: "Colaborador not found" });
       }
 
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
+      
       // Extract itens and remove valorTotalSolicitado from request body
       // (server will calculate total from itens for security)
-      const { itens, valorTotalSolicitado, ...reembolsoData } = req.body;
+      let itens = req.body.itens;
+      if (typeof itens === 'string') {
+        itens = JSON.parse(itens);
+      }
+      
+      const { valorTotalSolicitado, ...reembolsoData } = req.body;
       
       // Validate reembolso data (without valorTotalSolicitado)
       const validated = insertReembolsoSchema.omit({ valorTotalSolicitado: true }).parse({
@@ -685,7 +697,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (itens && Array.isArray(itens) && itens.length > 0) {
         for (const item of itens) {
           // Parse without reembolsoId (will be added by storage)
-          const { reembolsoId, ...itemData } = item;
+          const { reembolsoId, hasNewFile, ...itemData } = item;
+          
+          // Convert date string to Date object
+          if (itemData.dataDespesa && typeof itemData.dataDespesa === 'string') {
+            itemData.dataDespesa = new Date(itemData.dataDespesa);
+          }
+          
           const validatedItem = insertReembolsoItemSchema
             .omit({ reembolsoId: true })
             .parse(itemData);
@@ -693,8 +711,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create reembolso and itens in a transaction
-      const result = await storage.createReembolsoWithItens(validated, validatedItens);
+      // Create reembolso and itens in a transaction with files
+      const result = await storage.createReembolsoWithItens(validated, validatedItens, files);
       
       // Send email notification to diretoria (fire-and-forget)
       const diretoriaEmailsReembolso = await getEmailsByRole('Diretoria');
@@ -779,7 +797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/reembolsos/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/reembolsos/:id", isAuthenticated, upload.any(), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = req.user as any;
@@ -814,8 +832,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Extract itens and remove valorTotalSolicitado and colaboradorId from request body
-      const { itens, valorTotalSolicitado, colaboradorId, ...reembolsoData } = req.body;
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
+      
+      // Extract itens and parse if string (from FormData)
+      let itens = req.body.itens;
+      if (typeof itens === 'string') {
+        itens = JSON.parse(itens);
+      }
+      
+      const { valorTotalSolicitado, colaboradorId, ...reembolsoData } = req.body;
       
       // Convert date strings to Date objects if present
       if (reembolsoData.dataSolicitacao && typeof reembolsoData.dataSolicitacao === 'string') {
@@ -826,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedItens: InsertReembolsoItem[] = [];
       if (itens && Array.isArray(itens) && itens.length > 0) {
         for (const item of itens) {
-          const { reembolsoId, ...itemData } = item;
+          const { reembolsoId, hasNewFile, ...itemData } = item;
           
           // Convert date strings to Date objects for items
           if (itemData.dataDespesa && typeof itemData.dataDespesa === 'string') {
@@ -840,8 +866,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Update reembolso and itens in a transaction
-      const result = await storage.updateReembolsoWithItens(id, reembolsoData, validatedItens);
+      // Update reembolso and itens in a transaction with files
+      const result = await storage.updateReembolsoWithItens(id, reembolsoData, validatedItens, files);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
