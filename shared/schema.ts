@@ -44,6 +44,26 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 // ====================================================================
+// CENTROS DE CUSTO (Cost Centers)
+// ====================================================================
+
+export const centrosCusto = pgTable("centros_custo", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  nome: varchar("nome", { length: 255 }).notNull().unique(),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCentroCustoSchema = createInsertSchema(centrosCusto).omit({
+  id: true,
+  ativo: true,
+  createdAt: true,
+});
+
+export type InsertCentroCusto = z.infer<typeof insertCentroCustoSchema>;
+export type CentroCusto = typeof centrosCusto.$inferSelect;
+
+// ====================================================================
 // COLABORADORES (Employees/Staff)
 // ====================================================================
 

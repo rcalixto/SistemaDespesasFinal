@@ -102,7 +102,7 @@ Core entities include:
 - `prestacaoAdiantamento` - Accountability records for advances with expense items
 - `prestacaoAdiantamentoItens` - Individual expense items with category, value, and receipt attachment (comprovante)
 - `reembolsos` - Reimbursement requests with categorized items captured at creation (single-step flow) including valorTotalSolicitado
-- `reembolsoItens` - Individual reimbursement expense items with category, description, value, and receipt attachment
+- `reembolsoItens` - Individual reimbursement expense items with category, description, value, expense date (data_despesa), receipt attachment (comprovante), and optional notes (observacoes)
 - `passagensAereas` - Flight ticket requests with optional link to hospedagem (hospedagemId)
 - `hospedagens` - Accommodation requests with optional link to passagem aérea (passagemAereaId)
 - `viagensExecutadas` - Executed travel records with cost breakdown
@@ -111,7 +111,13 @@ Core entities include:
 **Key Relationships**:
 - **Passagens ↔ Hospedagens**: Bidirectional optional relationship allowing a flight ticket to reference an accommodation and vice-versa. This enables tracking overnight trips where flight tickets require lodging.
 - **Prestação Items**: Each prestação de adiantamento can have multiple expense items (`prestacaoAdiantamentoItens`), each categorized under one of 10 predefined categories with receipt attachments stored in Replit Object Storage.
-- **Reembolso Items**: Each reembolso has multiple expense items (`reembolsoItens`) provided at creation, eliminating the two-step prestação model used for adiantamentos.
+- **Reembolso Items**: Each reembolso has multiple expense items (`reembolsoItens`) provided at creation with:
+  - Category (categoria) - one of 10 predefined expense categories
+  - Description (descricao) - text field describing the expense
+  - Value (valor) - decimal amount
+  - Expense date (data_despesa) - timestamp when expense occurred
+  - Receipt attachment (comprovante) - file stored in Replit Object Storage via ObjectUploader component
+  - Optional notes (observacoes) - additional text field for clarifications
 
 **Critical Security Features** (November 2025):
 - **Server-Side Total Calculation**: valorTotalSolicitado calculated exclusively from items server-side, never trusted from client input
@@ -160,6 +166,13 @@ Core entities include:
 - Session secret required in environment
 - HTTPS-only cookies in production
 - Auth failures logged and gracefully redirected
+
+**File Upload System** (November 2025):
+- **ObjectUploader Component**: Reusable upload component for expense receipts (comprovantes)
+- **Upload Flow**: Client requests signed URL → uploads to Object Storage → backend sets ACL
+- **Form Integration**: Uses `form.setValue()` to preserve all field values when attaching files
+- **Date Handling**: HTML5 `input type="date"` always returns ISO format (YYYY-MM-DD) regardless of browser locale, backend converts to Date object using `new Date(isoString)`
+- **Storage**: All receipt files stored in Replit Object Storage with public read access after ACL set
 
 ### External Dependencies
 
