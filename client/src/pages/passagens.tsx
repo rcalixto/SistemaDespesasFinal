@@ -9,6 +9,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +33,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Plane, Calendar, Hotel } from "lucide-react";
+import { Plus, Plane, Calendar, Hotel, Pencil, Trash2 } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
@@ -48,6 +58,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function Passagens() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<PassagemAerea | null>(null);
   const { toast } = useToast();
 
   const { data: passagens = [], isLoading } = useQuery<PassagemAerea[]>({
@@ -76,6 +89,9 @@ export default function Passagens() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
+      if (editingId) {
+        return await apiRequest("PATCH", `/api/passagens/${editingId}`, data);
+      }
       return await apiRequest("POST", "/api/passagens", data);
     },
     onSuccess: () => {
@@ -83,10 +99,36 @@ export default function Passagens() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
-        description: "Solicitação de passagem criada com sucesso!",
+        description: editingId
+          ? "Passagem atualizada com sucesso!"
+          : "Solicitação de passagem criada com sucesso!",
       });
       setDialogOpen(false);
+      setEditingId(null);
       form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/passagens/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/passagens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Sucesso",
+        description: "Passagem excluída com sucesso!",
+      });
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     },
     onError: (error: Error) => {
       toast({
@@ -102,6 +144,40 @@ export default function Passagens() {
     return new Intl.DateTimeFormat("pt-BR").format(d);
   };
 
+  const handleEdit = (item: PassagemAerea) => {
+    setEditingId(item.id);
+    form.reset({
+      origem: item.origem,
+      destino: item.destino,
+      dataIda: item.dataIda ? new Date(item.dataIda).toISOString().split('T')[0] : "",
+      dataVolta: item.dataVolta ? new Date(item.dataVolta).toISOString().split('T')[0] : "",
+      objetivo: item.objetivo,
+      diretoria: item.diretoria || "",
+      observacoes: item.observacoes || "",
+      hospedagemId: item.hospedagemId || null,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (item: PassagemAerea) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete.id);
+    }
+  };
+
+  const canEdit = (item: PassagemAerea) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
+  const canDelete = (item: PassagemAerea) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -113,7 +189,16 @@ export default function Passagens() {
             Solicite passagens aéreas para viagens corporativas
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog 
+          open={dialogOpen} 
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingId(null);
+              form.reset();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="gap-2" data-testid="new-passagem">
               <Plus className="w-4 h-4" />
@@ -122,7 +207,9 @@ export default function Passagens() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Nova Solicitação de Passagem Aérea</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Editar Passagem Aérea" : "Nova Solicitação de Passagem Aérea"}
+              </DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -278,7 +365,12 @@ export default function Passagens() {
                   disabled={createMutation.isPending}
                   data-testid="submit-passagem"
                 >
-                  {createMutation.isPending ? "Enviando..." : "Solicitar Passagem"}
+                  {createMutation.isPending 
+                    ? "Salvando..." 
+                    : editingId 
+                      ? "Atualizar Passagem" 
+                      : "Solicitar Passagem"
+                  }
                 </Button>
               </form>
             </Form>
@@ -332,8 +424,32 @@ export default function Passagens() {
                       </div>
                     </div>
                   </div>
-                  <div className="ml-6">
+                  <div className="flex flex-col items-end gap-3">
                     <StatusBadge status={item.status || "Solicitado"} />
+                    {(canEdit(item) || canDelete(item)) && (
+                      <div className="flex gap-2">
+                        {canEdit(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {canDelete(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(item)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -341,6 +457,32 @@ export default function Passagens() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a passagem aérea de{" "}
+              <strong>{itemToDelete?.origem} → {itemToDelete?.destino}</strong>? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
