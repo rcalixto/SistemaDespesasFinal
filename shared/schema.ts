@@ -130,6 +130,8 @@ export const adiantamentos = pgTable("adiantamentos", {
   formaPagamento: varchar("forma_pagamento", { length: 100 }),
   observacoes: text("observacoes"),
   anexos: jsonb("anexos").$type<string[]>().default([]),
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -140,6 +142,8 @@ export const insertAdiantamentoSchema = createInsertSchema(adiantamentos).omit({
   aprovacaoDiretoria: true,
   aprovacaoFinanceiro: true,
   dataPagamento: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -165,6 +169,8 @@ export const prestacaoAdiantamento = pgTable("prestacao_adiantamento", {
   status: varchar("status", { length: 50 }).notNull().default('Pendente'),
   observacoes: text("observacoes"),
   anexos: jsonb("anexos").$type<string[]>().default([]),
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -172,6 +178,8 @@ export const prestacaoAdiantamento = pgTable("prestacao_adiantamento", {
 export const insertPrestacaoAdiantamentoSchema = createInsertSchema(prestacaoAdiantamento).omit({
   id: true,
   dataEnvio: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -243,6 +251,8 @@ export const reembolsos = pgTable("reembolsos", {
   dataPagamento: timestamp("data_pagamento"),
   formaPagamento: varchar("forma_pagamento", { length: 100 }),
   observacoes: text("observacoes"),
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -253,6 +263,8 @@ export const insertReembolsoSchema = createInsertSchema(reembolsos).omit({
   aprovacaoDiretoria: true,
   aprovacaoFinanceiro: true,
   dataPagamento: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -308,6 +320,8 @@ export const passagensAereas = pgTable("passagens_aereas", {
   observacoes: text("observacoes"),
   anexos: jsonb("anexos").$type<string[]>().default([]),
   hospedagemId: integer("hospedagem_id"), // Relacionamento opcional com hospedagem
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -317,6 +331,8 @@ export const insertPassagemAereaSchema = createInsertSchema(passagensAereas).omi
   dataSolicitacao: true,
   aprovacaoDiretoria: true,
   aprovacaoFinanceiro: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -345,6 +361,8 @@ export const hospedagens = pgTable("hospedagens", {
   observacoes: text("observacoes"),
   anexos: jsonb("anexos").$type<string[]>().default([]),
   passagemAereaId: integer("passagem_aerea_id"), // Relacionamento opcional com passagem aérea
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -352,6 +370,8 @@ export const hospedagens = pgTable("hospedagens", {
 export const insertHospedagemSchema = createInsertSchema(hospedagens).omit({
   id: true,
   dataSolicitacao: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -386,12 +406,16 @@ export const viagensExecutadas = pgTable("viagens_executadas", {
   observacoes: text("observacoes"),
   dataPagamento: timestamp("data_pagamento"),
   fatura: varchar("fatura", { length: 500 }),
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertViagemExecutadaSchema = createInsertSchema(viagensExecutadas).omit({
   id: true,
   emissao: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   dataPagamento: true,
 }).extend({
@@ -431,12 +455,16 @@ export const hospedagensExecutadas = pgTable("hospedagens_executadas", {
   observacoes: text("observacoes"),
   dataPagamento: timestamp("data_pagamento"),
   fatura: varchar("fatura", { length: 500 }),
+  deletedAt: timestamp("deleted_at"),
+  lastUpdatedBy: varchar("last_updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertHospedagemExecutadaSchema = createInsertSchema(hospedagensExecutadas).omit({
   id: true,
   emissao: true,
+  deletedAt: true,
+  lastUpdatedBy: true,
   createdAt: true,
   dataPagamento: true,
 }).extend({

@@ -83,12 +83,14 @@ export interface IStorage {
   getAdiantamentoById(id: number): Promise<Adiantamento | undefined>;
   createAdiantamento(data: InsertAdiantamento): Promise<Adiantamento>;
   updateAdiantamento(id: number, data: Partial<Adiantamento>): Promise<Adiantamento | undefined>;
+  deleteAdiantamento(id: number, userId: string): Promise<Adiantamento | undefined>;
 
   // Prestação de Adiantamento
   getPrestacaoAdiantamentoById(id: number): Promise<PrestacaoAdiantamento | undefined>;
   getPrestacaoAdiantamentoByAdiantamentoId(adiantamentoId: number): Promise<PrestacaoAdiantamento | undefined>;
   createPrestacaoAdiantamento(data: InsertPrestacaoAdiantamento): Promise<PrestacaoAdiantamento>;
   updatePrestacaoAdiantamento(id: number, data: Partial<PrestacaoAdiantamento>): Promise<PrestacaoAdiantamento | undefined>;
+  deletePrestacaoAdiantamento(id: number, userId: string): Promise<PrestacaoAdiantamento | undefined>;
 
   // Itens de Despesa da Prestação de Adiantamento
   getPrestacaoAdiantamentoItens(prestacaoAdiantamentoId: number): Promise<PrestacaoAdiantamentoItem[]>;
@@ -107,6 +109,7 @@ export interface IStorage {
   getReembolsoById(id: number): Promise<Reembolso | undefined>;
   createReembolsoWithItens(reembolso: InsertReembolso, itens: InsertReembolsoItem[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
   updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined>;
+  deleteReembolso(id: number, userId: string): Promise<Reembolso | undefined>;
 
   // Itens de Despesa do Reembolso
   getReembolsoItens(reembolsoId: number): Promise<ReembolsoItem[]>;
@@ -124,6 +127,7 @@ export interface IStorage {
   getPassagemAereaById(id: number): Promise<PassagemAerea | undefined>;
   createPassagemAerea(data: InsertPassagemAerea): Promise<PassagemAerea>;
   updatePassagemAerea(id: number, data: Partial<PassagemAerea>): Promise<PassagemAerea | undefined>;
+  deletePassagemAerea(id: number, userId: string): Promise<PassagemAerea | undefined>;
 
   // Hospedagens
   getHospedagens(filters?: {
@@ -135,6 +139,7 @@ export interface IStorage {
   getHospedagemById(id: number): Promise<Hospedagem | undefined>;
   createHospedagem(data: InsertHospedagem): Promise<Hospedagem>;
   updateHospedagem(id: number, data: Partial<Hospedagem>): Promise<Hospedagem | undefined>;
+  deleteHospedagem(id: number, userId: string): Promise<Hospedagem | undefined>;
 
   // Viagens Executadas
   getViagensExecutadas(filters?: {
@@ -146,6 +151,7 @@ export interface IStorage {
   getViagemExecutadaById(id: number): Promise<ViagemExecutada | undefined>;
   createViagemExecutada(data: InsertViagemExecutada): Promise<ViagemExecutada>;
   updateViagemExecutada(id: number, data: Partial<ViagemExecutada>): Promise<ViagemExecutada | undefined>;
+  deleteViagemExecutada(id: number, userId: string): Promise<ViagemExecutada | undefined>;
 
   // Hospedagens Executadas
   getHospedagensExecutadas(filters?: {
@@ -157,6 +163,7 @@ export interface IStorage {
   getHospedagemExecutadaById(id: number): Promise<HospedagemExecutada | undefined>;
   createHospedagemExecutada(data: InsertHospedagemExecutada): Promise<HospedagemExecutada>;
   updateHospedagemExecutada(id: number, data: Partial<HospedagemExecutada>): Promise<HospedagemExecutada | undefined>;
+  deleteHospedagemExecutada(id: number, userId: string): Promise<HospedagemExecutada | undefined>;
 
   // Dashboard Stats
   getDashboardStats(colaboradorId?: number): Promise<{
@@ -333,6 +340,15 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async deleteAdiantamento(id: number, userId: string): Promise<Adiantamento | undefined> {
+    const result = await db
+      .update(adiantamentos)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId, updatedAt: new Date() })
+      .where(eq(adiantamentos.id, id))
+      .returning();
+    return result[0];
+  }
+
   // ============================================================================
   // PRESTAÇÃO DE ADIANTAMENTO
   // ============================================================================
@@ -387,6 +403,15 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(prestacaoAdiantamento)
       .set({ ...data, updatedAt: new Date() })
+      .where(eq(prestacaoAdiantamento.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deletePrestacaoAdiantamento(id: number, userId: string): Promise<PrestacaoAdiantamento | undefined> {
+    const result = await db
+      .update(prestacaoAdiantamento)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId, updatedAt: new Date() })
       .where(eq(prestacaoAdiantamento.id, id))
       .returning();
     return result[0];
@@ -513,6 +538,15 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async deleteReembolso(id: number, userId: string): Promise<Reembolso | undefined> {
+    const result = await db
+      .update(reembolsos)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId, updatedAt: new Date() })
+      .where(eq(reembolsos.id, id))
+      .returning();
+    return result[0];
+  }
+
   // ============================================================================
   // ITENS DE DESPESA DO REEMBOLSO
   // ============================================================================
@@ -595,6 +629,15 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async deletePassagemAerea(id: number, userId: string): Promise<PassagemAerea | undefined> {
+    const result = await db
+      .update(passagensAereas)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId, updatedAt: new Date() })
+      .where(eq(passagensAereas.id, id))
+      .returning();
+    return result[0];
+  }
+
   // ============================================================================
   // HOSPEDAGENS
   // ============================================================================
@@ -642,6 +685,15 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(hospedagens)
       .set({ ...data, updatedAt: new Date() })
+      .where(eq(hospedagens.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteHospedagem(id: number, userId: string): Promise<Hospedagem | undefined> {
+    const result = await db
+      .update(hospedagens)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId, updatedAt: new Date() })
       .where(eq(hospedagens.id, id))
       .returning();
     return result[0];
@@ -699,6 +751,15 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async deleteViagemExecutada(id: number, userId: string): Promise<ViagemExecutada | undefined> {
+    const result = await db
+      .update(viagensExecutadas)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId })
+      .where(eq(viagensExecutadas.id, id))
+      .returning();
+    return result[0];
+  }
+
   // ============================================================================
   // HOSPEDAGENS EXECUTADAS
   // ============================================================================
@@ -746,6 +807,15 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(hospedagensExecutadas)
       .set(data)
+      .where(eq(hospedagensExecutadas.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteHospedagemExecutada(id: number, userId: string): Promise<HospedagemExecutada | undefined> {
+    const result = await db
+      .update(hospedagensExecutadas)
+      .set({ deletedAt: new Date(), lastUpdatedBy: userId })
       .where(eq(hospedagensExecutadas.id, id))
       .returning();
     return result[0];
