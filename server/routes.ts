@@ -277,14 +277,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/adiantamentos/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const adiantamento = await storage.getAdiantamentoById(id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
       
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const adiantamento = await storage.getAdiantamentoById(id);
       if (!adiantamento) {
         return res.status(404).json({ message: "Adiantamento not found" });
       }
 
+      // Check permissions: only owner can edit if status is Solicitado or Rejeitado, or admin
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = adiantamento.colaboradorId === colaborador.id;
+      
+      const canEdit = isAdmin || 
+        (isOwner && (adiantamento.status === "Solicitado" || adiantamento.status === "Rejeitado"));
+
+      if (!canEdit) {
+        return res.status(403).json({ 
+          message: "Você não pode editar este adiantamento" 
+        });
+      }
+
       // Convert date strings to Date objects if present
-      const updateData = { ...req.body };
+      const updateData = { ...req.body, lastUpdatedBy: userId };
       if (updateData.dataIda && typeof updateData.dataIda === 'string') {
         updateData.dataIda = new Date(updateData.dataIda);
       }
@@ -305,6 +331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/adiantamentos/:id/approve-diretoria", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
       const adiantamento = await storage.getAdiantamentoById(id);
       
       if (!adiantamento) {
@@ -318,6 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await storage.updateAdiantamento(id, {
         status: "AprovadoDiretoria",
         aprovacaoDiretoria: true,
+        lastUpdatedBy: userId,
       });
 
       res.json(updated);
@@ -329,6 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/adiantamentos/:id/approve-financeiro", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
       const adiantamento = await storage.getAdiantamentoById(id);
       
       if (!adiantamento) {
@@ -344,6 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aprovacaoFinanceiro: true,
         dataPagamento: new Date(),
         formaPagamento: req.body.formaPagamento,
+        lastUpdatedBy: userId,
       });
 
       res.json(updated);
@@ -355,11 +389,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/adiantamentos/:id/reject", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
       const updated = await storage.updateAdiantamento(id, {
         status: "Rejeitado",
+        lastUpdatedBy: userId,
       });
 
       res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/adiantamentos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const adiantamento = await storage.getAdiantamentoById(id);
+      if (!adiantamento) {
+        return res.status(404).json({ message: "Adiantamento not found" });
+      }
+
+      // Check permissions
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = adiantamento.colaboradorId === colaborador.id;
+
+      // Only owner can delete if status is Solicitado or Rejeitado
+      // Admins can delete anything except Pago or Concluído
+      const canDelete = isAdmin || 
+        (isOwner && (adiantamento.status === "Solicitado" || adiantamento.status === "Rejeitado"));
+
+      if (!canDelete) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir este adiantamento" 
+        });
+      }
+
+      // Prevent deletion of paid/completed items
+      if (adiantamento.status === "Pago" || adiantamento.status === "Concluído") {
+        return res.status(400).json({ 
+          message: "Não é possível excluir adiantamentos pagos ou concluídos" 
+        });
+      }
+
+      const deleted = await storage.deleteAdiantamento(id, userId);
+      res.json({ message: "Adiantamento excluído com sucesso", deleted });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
@@ -476,6 +565,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/reembolsos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const reembolso = await storage.getReembolsoById(id);
+      if (!reembolso) {
+        return res.status(404).json({ message: "Reembolso not found" });
+      }
+
+      // Check permissions
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = reembolso.colaboradorId === colaborador.id;
+
+      const canDelete = isAdmin || 
+        (isOwner && (reembolso.status === "Solicitado" || reembolso.status === "Rejeitado"));
+
+      if (!canDelete) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir este reembolso" 
+        });
+      }
+
+      if (reembolso.status === "Pago" || reembolso.status === "Concluído") {
+        return res.status(400).json({ 
+          message: "Não é possível excluir reembolsos pagos ou concluídos" 
+        });
+      }
+
+      const deleted = await storage.deleteReembolso(id, userId);
+      res.json({ message: "Reembolso excluído com sucesso", deleted });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // ============================================================================
   // PASSAGENS AÉREAS
   // ============================================================================
@@ -561,6 +698,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/passagens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const passagem = await storage.getPassagemAereaById(id);
+      if (!passagem) {
+        return res.status(404).json({ message: "Passagem not found" });
+      }
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = passagem.colaboradorId === colaborador.id;
+
+      const canDelete = isAdmin || 
+        (isOwner && (passagem.status === "Solicitado" || passagem.status === "Rejeitado"));
+
+      if (!canDelete) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir esta passagem" 
+        });
+      }
+
+      if (passagem.status === "Emitido") {
+        return res.status(400).json({ 
+          message: "Não é possível excluir passagens já emitidas" 
+        });
+      }
+
+      const deleted = await storage.deletePassagemAerea(id, userId);
+      res.json({ message: "Passagem excluída com sucesso", deleted });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
@@ -655,6 +839,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/hospedagens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const hospedagem = await storage.getHospedagemById(id);
+      if (!hospedagem) {
+        return res.status(404).json({ message: "Hospedagem not found" });
+      }
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = hospedagem.colaboradorId === colaborador.id;
+
+      const canDelete = isAdmin || 
+        (isOwner && (hospedagem.status === "Solicitado" || hospedagem.status === "Rejeitado"));
+
+      if (!canDelete) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir esta hospedagem" 
+        });
+      }
+
+      if (hospedagem.status === "Confirmado") {
+        return res.status(400).json({ 
+          message: "Não é possível excluir hospedagens já confirmadas" 
+        });
+      }
+
+      const deleted = await storage.deleteHospedagem(id, userId);
+      res.json({ message: "Hospedagem excluída com sucesso", deleted });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // ============================================================================
   // VIAGENS EXECUTADAS
   // ============================================================================
@@ -703,6 +934,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/viagens-executadas/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const viagem = await storage.getViagemExecutadaById(id);
+      if (!viagem) {
+        return res.status(404).json({ message: "Viagem executada not found" });
+      }
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = viagem.colaboradorId === colaborador.id;
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir esta viagem executada" 
+        });
+      }
+
+      const deleted = await storage.deleteViagemExecutada(id, userId);
+      res.json({ message: "Viagem executada excluída com sucesso", deleted });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // ============================================================================
   // HOSPEDAGENS EXECUTADAS
   // ============================================================================
@@ -747,6 +1016,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/hospedagens-executadas/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const hospedagem = await storage.getHospedagemExecutadaById(id);
+      if (!hospedagem) {
+        return res.status(404).json({ message: "Hospedagem executada not found" });
+      }
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = hospedagem.colaboradorId === colaborador.id;
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir esta hospedagem executada" 
+        });
+      }
+
+      const deleted = await storage.deleteHospedagemExecutada(id, userId);
+      res.json({ message: "Hospedagem executada excluída com sucesso", deleted });
+    } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   });
@@ -808,6 +1115,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/prestacao-adiantamento/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const userId = user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      const prestacao = await storage.getPrestacaoAdiantamentoById(id);
+      if (!prestacao) {
+        return res.status(404).json({ message: "Prestação not found" });
+      }
+
+      // Get the related adiantamento to check ownership
+      const adiantamento = await storage.getAdiantamentoById(prestacao.adiantamentoId);
+      if (!adiantamento) {
+        return res.status(404).json({ message: "Adiantamento relacionado não encontrado" });
+      }
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const userRoles = roles.map(r => r.role);
+      const isAdmin = userRoles.includes("Administrador");
+      const isOwner = adiantamento.colaboradorId === colaborador.id;
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ 
+          message: "Não é possível excluir esta prestação de adiantamento" 
+        });
+      }
+
+      const deleted = await storage.deletePrestacaoAdiantamento(id, userId);
+      res.json({ message: "Prestação de adiantamento excluída com sucesso", deleted });
+    } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   });

@@ -43,7 +43,7 @@ import {
   type HospedagemExecutada,
   type InsertHospedagemExecutada,
 } from "@shared/schema";
-import { eq, and, gte, lte, like, desc } from "drizzle-orm";
+import { eq, and, gte, lte, like, desc, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // Users (for Replit Auth)
@@ -297,7 +297,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Adiantamento[]> {
     let query = db.select().from(adiantamentos).orderBy(desc(adiantamentos.dataSolicitacao));
     
-    const conditions = [];
+    const conditions = [isNull(adiantamentos.deletedAt)];
     if (filters?.colaboradorId) {
       conditions.push(eq(adiantamentos.colaboradorId, filters.colaboradorId));
     }
@@ -460,7 +460,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Reembolso[]> {
     let query = db.select().from(reembolsos).orderBy(desc(reembolsos.dataSolicitacao));
     
-    const conditions = [];
+    const conditions = [isNull(reembolsos.deletedAt)];
     if (filters?.colaboradorId) {
       conditions.push(eq(reembolsos.colaboradorId, filters.colaboradorId));
     }
@@ -589,7 +589,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<PassagemAerea[]> {
     let query = db.select().from(passagensAereas).orderBy(desc(passagensAereas.dataSolicitacao));
     
-    const conditions = [];
+    const conditions = [isNull(passagensAereas.deletedAt)];
     if (filters?.colaboradorId) {
       conditions.push(eq(passagensAereas.colaboradorId, filters.colaboradorId));
     }
@@ -650,7 +650,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Hospedagem[]> {
     let query = db.select().from(hospedagens).orderBy(desc(hospedagens.dataSolicitacao));
     
-    const conditions = [];
+    const conditions = [isNull(hospedagens.deletedAt)];
     if (filters?.colaboradorId) {
       conditions.push(eq(hospedagens.colaboradorId, filters.colaboradorId));
     }
@@ -711,7 +711,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<ViagemExecutada[]> {
     let query = db.select().from(viagensExecutadas).orderBy(desc(viagensExecutadas.emissao));
     
-    const conditions = [];
+    const conditions = [isNull(viagensExecutadas.deletedAt)];
     if (filters?.colaboradorId) {
       conditions.push(eq(viagensExecutadas.colaboradorId, filters.colaboradorId));
     }
@@ -772,7 +772,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<HospedagemExecutada[]> {
     let query = db.select().from(hospedagensExecutadas).orderBy(desc(hospedagensExecutadas.emissao));
     
-    const conditions = [];
+    const conditions = [isNull(hospedagensExecutadas.deletedAt)];
     if (filters?.colaboradorId) {
       conditions.push(eq(hospedagensExecutadas.colaboradorId, filters.colaboradorId));
     }

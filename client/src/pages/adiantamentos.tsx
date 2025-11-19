@@ -9,6 +9,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +32,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Calendar, MapPin, TrendingUp, DollarSign } from "lucide-react";
+import { Plus, Calendar, MapPin, TrendingUp, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { FileUpload } from "@/components/FileUpload";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -46,6 +56,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function Adiantamentos() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Adiantamento | null>(null);
   const [anexos, setAnexos] = useState<File[]>([]);
   const { toast } = useToast();
 
@@ -68,17 +81,43 @@ export default function Adiantamentos() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
+      if (editingId) {
+        return await apiRequest("PATCH", `/api/adiantamentos/${editingId}`, data);
+      }
       return await apiRequest("POST", "/api/adiantamentos", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/adiantamentos"] });
       toast({
         title: "Sucesso",
-        description: "Adiantamento criado com sucesso!",
+        description: editingId ? "Adiantamento atualizado com sucesso!" : "Adiantamento criado com sucesso!",
       });
       setDialogOpen(false);
+      setEditingId(null);
       form.reset();
       setAnexos([]);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/adiantamentos/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/adiantamentos"] });
+      toast({
+        title: "Sucesso",
+        description: "Adiantamento excluído com sucesso!",
+      });
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     },
     onError: (error: Error) => {
       toast({
@@ -112,6 +151,39 @@ export default function Adiantamentos() {
   const formatDate = (date: Date | string) => {
     const d = typeof date === "string" ? new Date(date) : date;
     return new Intl.DateTimeFormat("pt-BR").format(d);
+  };
+
+  const handleEdit = (item: Adiantamento) => {
+    setEditingId(item.id);
+    form.reset({
+      localViagem: item.localViagem,
+      motivo: item.motivo,
+      dataIda: item.dataIda ? new Date(item.dataIda).toISOString().split('T')[0] : '',
+      dataVolta: item.dataVolta ? new Date(item.dataVolta).toISOString().split('T')[0] : '',
+      valorSolicitado: Number(item.valorSolicitado),
+      diretoriaResponsavel: item.diretoriaResponsavel,
+      observacoes: item.observacoes || '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (item: Adiantamento) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete.id);
+    }
+  };
+
+  const canEdit = (item: Adiantamento) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
+  };
+
+  const canDelete = (item: Adiantamento) => {
+    return item.status === "Solicitado" || item.status === "Rejeitado";
   };
 
   // Calculate summary
@@ -156,7 +228,9 @@ export default function Adiantamentos() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nova Solicitação de Adiantamento</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Editar Adiantamento" : "Nova Solicitação de Adiantamento"}
+              </DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -404,33 +478,59 @@ export default function Adiantamentos() {
               data-testid={`adiantamento-${item.id}`}
             >
               <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3 mb-2">
                       <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
-                      <h3 className="text-lg font-semibold text-foreground">
+                      <h3 className="text-lg font-semibold text-foreground truncate">
                         {item.localViagem}
                       </h3>
                     </div>
-                    <p className="text-muted-foreground mb-3">{item.motivo}</p>
+                    <p className="text-muted-foreground mb-3 line-clamp-2">{item.motivo}</p>
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>
+                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">
                           {formatDate(item.dataIda)} até {formatDate(item.dataVolta)}
                         </span>
                       </div>
-                      <div>
+                      <div className="truncate">
                         <span className="font-medium">Diretoria:</span>{" "}
                         {item.diretoriaResponsavel}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right ml-6">
-                    <p className="text-2xl font-bold text-primary mb-2">
-                      {formatCurrency(item.valorSolicitado)}
-                    </p>
-                    <StatusBadge status={item.status || "Solicitado"} />
+                  <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-primary mb-2">
+                        {formatCurrency(item.valorSolicitado)}
+                      </p>
+                      <StatusBadge status={item.status || "Solicitado"} />
+                    </div>
+                    {(canEdit(item) || canDelete(item)) && (
+                      <div className="flex gap-2">
+                        {canEdit(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {canDelete(item) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(item)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -438,6 +538,31 @@ export default function Adiantamentos() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o adiantamento para{" "}
+              <strong>{itemToDelete?.localViagem}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
