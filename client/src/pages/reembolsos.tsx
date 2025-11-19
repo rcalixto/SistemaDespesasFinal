@@ -38,14 +38,12 @@ import {
 } from "@/components/ui/select";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X, Pencil } from "lucide-react";
+import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X, Pencil, File } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import type { Reembolso } from "@shared/schema";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
 
 const CATEGORIAS_PADRAO = [
@@ -84,6 +82,7 @@ export default function Reembolsos() {
   const [itemToDelete, setItemToDelete] = useState<Reembolso | null>(null);
   const [categorias, setCategorias] = useState<string[]>([...CATEGORIAS_PADRAO]);
   const [customCategoryInput, setCustomCategoryInput] = useState<Record<number, string>>({});
+  const [comprovantes, setComprovantes] = useState<Record<number, File[]>>({});
   const { toast } = useToast();
 
   const { data: reembolsos = [], isLoading } = useQuery<Reembolso[]>({
@@ -114,63 +113,13 @@ export default function Reembolsos() {
     name: "itens",
   });
 
-  // Handler para obter URL de upload
-  const handleGetUploadUrl = (index: number) => {
-    return async () => {
-      try {
-        const response = await fetch("/api/objects/upload", {
-          method: "POST",
-          credentials: "include",
-        });
-        const data = await response.json();
-        return {
-          method: "PUT" as const,
-          url: data.uploadURL,
-        };
-      } catch (error) {
-        toast({
-          title: "Erro ao preparar upload",
-          description: "Não foi possível obter URL de upload",
-          variant: "destructive",
-        });
-        throw error;
-      }
-    };
-  };
-
-  // Handler após completar upload
-  const handleUploadComplete = (index: number) => {
-    return async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-      if (result.successful && result.successful.length > 0) {
-        const uploadURL = result.successful[0]?.uploadURL;
-        
-        try {
-          // Definir ACL do comprovante
-          const response = await fetch("/api/comprovantes", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ comprovanteURL: uploadURL }),
-          });
-          
-          const data = await response.json();
-          
-          // Atualizar apenas o campo comprovante, preservando todos os outros valores
-          form.setValue(`itens.${index}.comprovante`, data.objectPath);
-          
-          toast({
-            title: "Comprovante anexado!",
-            description: "O arquivo foi enviado com sucesso.",
-          });
-        } catch (error) {
-          toast({
-            title: "Erro ao processar comprovante",
-            description: "O arquivo foi enviado mas houve erro ao processar",
-            variant: "destructive",
-          });
-        }
-      }
-    };
+  const handleFileChange = (index: number, files: FileList | null) => {
+    if (files && files.length > 0) {
+      setComprovantes(prev => ({
+        ...prev,
+        [index]: Array.from(files)
+      }));
+    }
   };
 
   const createMutation = useMutation({
@@ -181,20 +130,54 @@ export default function Reembolsos() {
         0
       );
 
-      const payload = {
-        ...data,
-        valorTotalSolicitado,
-        itens: data.itens.map((item) => ({
-          ...item,
-          valor: Number(item.valor),
-          dataDespesa: String(item.dataDespesa),
-        })),
-      };
-
-      if (editingId) {
-        return await apiRequest("PATCH", `/api/reembolsos/${editingId}`, payload);
+      // Create FormData
+      const formData = new FormData();
+      
+      // Add text fields
+      formData.append('motivo', data.motivo);
+      formData.append('centroCusto', data.centroCusto);
+      formData.append('justificativa', data.justificativa);
+      if (data.observacoes) {
+        formData.append('observacoes', data.observacoes);
       }
-      return await apiRequest("POST", "/api/reembolsos", payload);
+      formData.append('valorTotalSolicitado', String(valorTotalSolicitado));
+      
+      // Add items as JSON
+      const itensData = data.itens.map((item, idx) => ({
+        categoria: item.categoria,
+        descricao: item.descricao,
+        valor: Number(item.valor),
+        dataDespesa: String(item.dataDespesa),
+        comprovante: item.comprovante || "",
+        hasNewFile: !!comprovantes[idx]
+      }));
+      formData.append('itens', JSON.stringify(itensData));
+      
+      // Add all files
+      Object.entries(comprovantes).forEach(([index, files]) => {
+        files.forEach(file => {
+          formData.append(`comprovante_${index}`, file);
+        });
+      });
+
+      const url = editingId 
+        ? `/api/reembolsos/${editingId}`
+        : '/api/reembolsos';
+      
+      const method = editingId ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao salvar reembolso');
+      }
+
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reembolsos"] });
@@ -207,6 +190,7 @@ export default function Reembolsos() {
       });
       setDialogOpen(false);
       setEditingId(null);
+      setComprovantes({});
       form.reset();
     },
     onError: (error: Error) => {
@@ -220,7 +204,15 @@ export default function Reembolsos() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/reembolsos/${id}`);
+      const response = await fetch(`/api/reembolsos/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao excluir reembolso');
+      }
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reembolsos"] });
@@ -336,6 +328,7 @@ export default function Reembolsos() {
             setDialogOpen(open);
             if (!open) {
               setEditingId(null);
+              setComprovantes({});
               form.reset();
             }
           }}
@@ -661,37 +654,58 @@ export default function Reembolsos() {
                             <FormLabel style={{ color: "#004650" }}>
                               Comprovante (Nota Fiscal/Recibo)
                             </FormLabel>
-                            <div className="mt-2">
-                              {form.watch(`itens.${index}.comprovante`) ? (
-                                <div className="flex items-center gap-2">
-                                  <Check className="h-4 w-4 text-green-600" />
-                                  <span className="text-xs text-muted-foreground">Anexado</span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      form.setValue(`itens.${index}.comprovante`, "");
-                                    }}
-                                    data-testid={`button-remove-comprovante-${index}`}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
+                            <div className="mt-2 space-y-2">
+                              {form.watch(`itens.${index}.comprovante`) && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <File className="h-4 w-4 text-green-600" />
+                                  <span className="text-xs text-muted-foreground">
+                                    Comprovante existente
+                                  </span>
                                 </div>
-                              ) : (
-                                <ObjectUploader
-                                  maxNumberOfFiles={1}
-                                  maxFileSize={10485760}
-                                  onGetUploadParameters={handleGetUploadUrl(index)}
-                                  onComplete={handleUploadComplete(index)}
-                                  buttonVariant="outline"
-                                  buttonSize="sm"
-                                  data-testid={`button-upload-${index}`}
-                                >
-                                  <Upload className="h-4 w-4 mr-2" />
-                                  Anexar
-                                </ObjectUploader>
                               )}
+                              {comprovantes[index] && comprovantes[index].length > 0 && (
+                                <div className="space-y-1">
+                                  {comprovantes[index].map((file, fileIdx) => (
+                                    <div key={fileIdx} className="flex items-center gap-2 text-sm">
+                                      <Check className="h-4 w-4 text-green-600" />
+                                      <span className="text-xs text-muted-foreground truncate">
+                                        {file.name}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setComprovantes(prev => {
+                                            const updated = { ...prev };
+                                            updated[index] = updated[index].filter((_, i) => i !== fileIdx);
+                                            if (updated[index].length === 0) {
+                                              delete updated[index];
+                                            }
+                                            return updated;
+                                          });
+                                        }}
+                                        data-testid={`button-remove-file-${index}-${fileIdx}`}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div>
+                                <Input
+                                  type="file"
+                                  multiple
+                                  accept="image/*,.pdf"
+                                  onChange={(e) => handleFileChange(index, e.target.files)}
+                                  className="cursor-pointer"
+                                  data-testid={`input-file-${index}`}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Aceita múltiplos arquivos (imagens e PDF, max 10MB cada)
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
