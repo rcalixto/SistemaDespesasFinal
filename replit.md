@@ -87,6 +87,22 @@ Preferred communication style: Simple, everyday language.
 - **Error Handling**: Email failures logged but don't block request completion (fire-and-forget pattern)
 - **Role Lookup**: `getColaboradoresByRole()` retrieves all users with specific role for multi-recipient notifications
 
+**Reports and Analytics** (November 2025):
+- **Endpoint**: `/api/relatorios` - GET endpoint with optional filters (dataInicio, dataFim, diretoria, status)
+- **Data Aggregations**: 
+  - Adiantamentos por Status - quantity and total value grouped by status
+  - Reembolsos por Status - quantity and total value grouped by status
+  - Reembolsos por Categoria - breakdown of expenses by category
+  - Evolução Mensal - monthly trend of adiantamentos and reembolsos (chronologically sorted)
+  - Top 10 Colaboradores - employees with highest total expense requests
+- **Filter Validation**: Backend validates all filter parameters are non-empty strings before applying WHERE clauses, prevents SQL injection with ::date type casting
+- **Frontend Implementation**: 
+  - React Query with explicit queryFn to build filtered URLs using URLSearchParams
+  - Recharts library for data visualization (BarChart, PieChart, LineChart)
+  - Summary cards displaying aggregate totals
+  - Filter inputs for date range (dataInicio, dataFim) and diretoria
+  - Automatic refetch when filter state changes via queryKey dependencies
+
 **File Structure**:
 - `/server/routes.ts` - Route registration and handler definitions with email notification hooks
 - `/server/storage.ts` - Data access interface and implementations
