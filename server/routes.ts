@@ -917,6 +917,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/passagens/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const colaborador = await getCurrentColaborador(req);
+      if (!colaborador) return res.status(404).json({ message: "Colaborador not found" });
+
+      const passagem = await storage.getPassagemAereaById(id);
+      if (!passagem) return res.status(404).json({ message: "Passagem not found" });
+
+      const roles = await storage.getColaboradorRoles(colaborador.id);
+      const isAdmin = roles.some(r => r.role === "Administrador");
+      const isOwner = passagem.colaboradorId === colaborador.id;
+      
+      const canEdit = isAdmin || (isOwner && (passagem.status === "Solicitado" || passagem.status === "Rejeitado"));
+      if (!canEdit) return res.status(403).json({ message: "Você não pode editar esta passagem" });
+
+      // Validar dados (sem colaboradorId no payload, será preservado do registro existente)
+      const dataToUpdate: any = { ...req.body };
+      if (dataToUpdate.dataIda) dataToUpdate.dataIda = new Date(dataToUpdate.dataIda);
+      if (dataToUpdate.dataVolta) dataToUpdate.dataVolta = new Date(dataToUpdate.dataVolta);
+      delete dataToUpdate.colaboradorId; // Segurança: não permitir alteração do colaboradorId
+
+      const updated = await storage.updatePassagemAerea(id, dataToUpdate as any);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.delete("/api/passagens/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
