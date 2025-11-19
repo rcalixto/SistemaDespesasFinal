@@ -93,7 +93,7 @@ export default function Reembolsos() {
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "itens",
   });
@@ -139,12 +139,8 @@ export default function Reembolsos() {
           
           const data = await response.json();
           
-          // Atualizar item com caminho do comprovante
-          const currentItem = form.getValues(`itens.${index}`);
-          update(index, {
-            ...currentItem,
-            comprovante: data.objectPath,
-          });
+          // Atualizar apenas o campo comprovante, preservando todos os outros valores
+          form.setValue(`itens.${index}.comprovante`, data.objectPath);
           
           toast({
             title: "Comprovante anexado!",
@@ -499,11 +495,7 @@ export default function Reembolsos() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      const currentItem = form.getValues(`itens.${index}`);
-                                      update(index, {
-                                        ...currentItem,
-                                        comprovante: "",
-                                      });
+                                      form.setValue(`itens.${index}.comprovante`, "");
                                     }}
                                     data-testid={`button-remove-comprovante-${index}`}
                                   >

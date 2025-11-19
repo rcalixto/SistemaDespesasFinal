@@ -439,7 +439,11 @@ export class DatabaseStorage implements IStorage {
       for (const item of itens) {
         const [createdItem] = await tx
           .insert(reembolsoItens)
-          .values({ ...item, reembolsoId: reembolso.id })
+          .values({ 
+            ...item, 
+            reembolsoId: reembolso.id,
+            dataDespesa: new Date(item.dataDespesa) 
+          })
           .returning();
         createdItens.push(createdItem);
       }
