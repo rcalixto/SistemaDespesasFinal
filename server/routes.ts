@@ -6,6 +6,8 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
+import express from "express";
+import path from "path";
 import {
   insertCentroCustoSchema,
   insertDiretoriaSchema,
@@ -47,6 +49,12 @@ async function getEmailsByRole(role: 'Diretoria' | 'Financeiro'): Promise<string
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ============================================================================
+  // STATIC FILES - Serve uploaded files
+  // ============================================================================
+  const uploadsPath = path.resolve(process.cwd(), "uploads");
+  app.use("/uploads", express.static(uploadsPath));
+
   // ============================================================================
   // AUTH SETUP
   // ============================================================================

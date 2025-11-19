@@ -655,14 +655,39 @@ export default function Reembolsos() {
                               Comprovante (Nota Fiscal/Recibo)
                             </FormLabel>
                             <div className="mt-2 space-y-2">
-                              {form.watch(`itens.${index}.comprovante`) && (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <File className="h-4 w-4 text-green-600" />
-                                  <span className="text-xs text-muted-foreground">
-                                    Comprovante existente
-                                  </span>
-                                </div>
-                              )}
+                              {form.watch(`itens.${index}.comprovante`) && (() => {
+                                try {
+                                  const comprovanteStr = form.watch(`itens.${index}.comprovante`);
+                                  if (!comprovanteStr) return null;
+                                  const fileData = JSON.parse(comprovanteStr);
+                                  return (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <File className="h-4 w-4 text-green-600" />
+                                      <a
+                                        href={`/${fileData.path}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 underline text-xs"
+                                        data-testid={`link-comprovante-${index}`}
+                                      >
+                                        {fileData.originalName || "Comprovante anexado"}
+                                      </a>
+                                      <span className="text-xs text-muted-foreground">
+                                        ({(fileData.size / 1024).toFixed(1)}KB)
+                                      </span>
+                                    </div>
+                                  );
+                                } catch {
+                                  return (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <File className="h-4 w-4 text-green-600" />
+                                      <span className="text-xs text-muted-foreground">
+                                        Comprovante existente
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                              })()}
                               {comprovantes[index] && comprovantes[index].length > 0 && (
                                 <div className="space-y-1">
                                   {comprovantes[index].map((file, fileIdx) => (
