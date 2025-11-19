@@ -48,7 +48,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
 
-const CATEGORIAS = [
+const CATEGORIAS_PADRAO = [
   "Transporte",
   "Alimentação",
   "Hospedagem",
@@ -62,7 +62,7 @@ const CATEGORIAS = [
 const itemSchema = z.object({
   categoria: z.string().min(1, "Categoria é obrigatória"),
   descricao: z.string().min(1, "Descrição é obrigatória"),
-  valor: z.coerce.number().positive("Valor deve ser maior que zero"),
+  valor: z.string().min(1, "Valor é obrigatório"),
   dataDespesa: z.string().min(1, "Data da despesa é obrigatória"),
   comprovante: z.string().optional(),
 });
@@ -82,6 +82,8 @@ export default function Reembolsos() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Reembolso | null>(null);
+  const [categorias, setCategorias] = useState<string[]>([...CATEGORIAS_PADRAO]);
+  const [customCategoryInput, setCustomCategoryInput] = useState<Record<number, string>>({});
   const { toast } = useToast();
 
   const { data: reembolsos = [], isLoading } = useQuery<Reembolso[]>({
@@ -99,7 +101,7 @@ export default function Reembolsos() {
         {
           categoria: "",
           descricao: "",
-          valor: 0,
+          valor: "",
           dataDespesa: "",
           comprovante: "",
         },
@@ -185,6 +187,7 @@ export default function Reembolsos() {
         itens: data.itens.map((item) => ({
           ...item,
           valor: Number(item.valor),
+          dataDespesa: String(item.dataDespesa),
         })),
       };
 
@@ -266,13 +269,13 @@ export default function Reembolsos() {
       itens: item.itens && item.itens.length > 0 ? item.itens.map(i => ({
         categoria: i.categoria,
         descricao: i.descricao,
-        valor: i.valor,
+        valor: String(i.valor),
         dataDespesa: i.dataDespesa ? new Date(i.dataDespesa).toISOString().split('T')[0] : "",
         comprovante: i.comprovante || "",
       })) : [{
         categoria: "",
         descricao: "",
-        valor: 0,
+        valor: "",
         dataDespesa: "",
         comprovante: "",
       }],
@@ -301,7 +304,10 @@ export default function Reembolsos() {
 
   const watchedItens = form.watch("itens");
   const totalCalculado = watchedItens?.reduce(
-    (sum, item) => sum + (Number(item?.valor) || 0),
+    (sum, item) => {
+      const valor = parseFloat(String(item?.valor || "0"));
+      return sum + (isNaN(valor) ? 0 : valor);
+    },
     0
   ) || 0;
 
@@ -454,7 +460,7 @@ export default function Reembolsos() {
                         append({
                           categoria: "",
                           descricao: "",
-                          valor: 0,
+                          valor: "",
                           dataDespesa: "",
                           comprovante: "",
                         })
@@ -501,8 +507,17 @@ export default function Reembolsos() {
                                     Categoria *
                                   </FormLabel>
                                   <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
+                                    onValueChange={(value) => {
+                                      if (value === "__custom__") {
+                                        setCustomCategoryInput({ ...customCategoryInput, [index]: "" });
+                                      } else {
+                                        field.onChange(value);
+                                        const newInput = { ...customCategoryInput };
+                                        delete newInput[index];
+                                        setCustomCategoryInput(newInput);
+                                      }
+                                    }}
+                                    value={customCategoryInput[index] !== undefined ? "__custom__" : field.value}
                                   >
                                     <FormControl>
                                       <SelectTrigger data-testid={`select-categoria-${index}`}>
@@ -510,13 +525,64 @@ export default function Reembolsos() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {CATEGORIAS.map((cat) => (
+                                      {categorias.map((cat) => (
                                         <SelectItem key={cat} value={cat}>
                                           {cat}
                                         </SelectItem>
                                       ))}
+                                      <SelectItem value="__custom__">
+                                        Outro (digitar)
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
+                                  {customCategoryInput[index] !== undefined && (
+                                    <div className="flex gap-2 mt-2">
+                                      <Input
+                                        placeholder="Digite a categoria"
+                                        value={customCategoryInput[index]}
+                                        onChange={(e) => {
+                                          setCustomCategoryInput({
+                                            ...customCategoryInput,
+                                            [index]: e.target.value,
+                                          });
+                                        }}
+                                        data-testid={`input-custom-categoria-${index}`}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newCategory = customCategoryInput[index].trim();
+                                          if (newCategory) {
+                                            if (!categorias.includes(newCategory)) {
+                                              setCategorias([...categorias, newCategory]);
+                                            }
+                                            field.onChange(newCategory);
+                                            const newInput = { ...customCategoryInput };
+                                            delete newInput[index];
+                                            setCustomCategoryInput(newInput);
+                                          }
+                                        }}
+                                        data-testid={`button-add-custom-categoria-${index}`}
+                                      >
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newInput = { ...customCategoryInput };
+                                          delete newInput[index];
+                                          setCustomCategoryInput(newInput);
+                                        }}
+                                        data-testid={`button-cancel-custom-categoria-${index}`}
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  )}
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -532,11 +598,16 @@ export default function Reembolsos() {
                                   </FormLabel>
                                   <FormControl>
                                     <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
+                                      type="text"
                                       placeholder="0.00"
                                       {...field}
+                                      value={field.value}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                          field.onChange(value);
+                                        }
+                                      }}
                                       data-testid={`input-valor-${index}`}
                                     />
                                   </FormControl>
