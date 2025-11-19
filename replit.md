@@ -60,7 +60,6 @@ Preferred communication style: Simple, everyday language.
 - `/api/viagens-executadas` - Executed travel records
 - `/api/hospedagens-executadas` - Executed lodging records
 - `/api/prestacao-adiantamento` - Advance payment accountability
-- `/api/prestacao-reembolso` - Reimbursement accountability
 
 **Business Logic**:
 - **Approval Workflows**: Two-stage approval (Directorate → Finance) with automatic status transitions
@@ -102,8 +101,8 @@ Core entities include:
 - `adiantamentos` - Advance payment requests with approval workflow status
 - `prestacaoAdiantamento` - Accountability records for advances with expense items
 - `prestacaoAdiantamentoItens` - Individual expense items with category, value, and receipt attachment (comprovante)
-- `reembolsos` - Reimbursement requests with receipt attachment support
-- `prestacaoReembolso` - Accountability records for reimbursements
+- `reembolsos` - Reimbursement requests with categorized items captured at creation (single-step flow) including valorTotalSolicitado
+- `reembolsoItens` - Individual reimbursement expense items with category, description, value, and receipt attachment
 - `passagensAereas` - Flight ticket requests with optional link to hospedagem (hospedagemId)
 - `hospedagens` - Accommodation requests with optional link to passagem aérea (passagemAereaId)
 - `viagensExecutadas` - Executed travel records with cost breakdown
@@ -112,6 +111,13 @@ Core entities include:
 **Key Relationships**:
 - **Passagens ↔ Hospedagens**: Bidirectional optional relationship allowing a flight ticket to reference an accommodation and vice-versa. This enables tracking overnight trips where flight tickets require lodging.
 - **Prestação Items**: Each prestação de adiantamento can have multiple expense items (`prestacaoAdiantamentoItens`), each categorized under one of 10 predefined categories with receipt attachments stored in Replit Object Storage.
+- **Reembolso Items**: Each reembolso has multiple expense items (`reembolsoItens`) provided at creation, eliminating the two-step prestação model used for adiantamentos.
+
+**Critical Security Features** (November 2025):
+- **Server-Side Total Calculation**: valorTotalSolicitado calculated exclusively from items server-side, never trusted from client input
+- **Transactional Integrity**: All multi-record operations (reembolso + items) wrapped in database transactions
+- **Non-Empty Validation**: API enforces at least one item required for reembolsos
+- **Client Input Sanitization**: API strips client-provided totals before validation to prevent tampering
 
 **Session Storage**: Sessions table required by Replit Auth with TTL-based expiration.
 
