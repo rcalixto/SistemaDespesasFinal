@@ -17,6 +17,7 @@ import Hospedagens from "@/pages/hospedagens";
 import ViagensExecutadas from "@/pages/viagens-executadas";
 import HospedagensExecutadas from "@/pages/hospedagens-executadas";
 import PrestacaoAdiantamentos from "@/pages/prestacao-adiantamentos";
+import Relatorios from "@/pages/relatorios";
 import type { User } from "@shared/schema";
 
 function AuthenticatedRouter() {
@@ -31,6 +32,7 @@ function AuthenticatedRouter() {
       <Route path="/viagens-executadas" component={ViagensExecutadas} />
       <Route path="/hospedagens-executadas" component={HospedagensExecutadas} />
       <Route path="/prestacao-adiantamentos" component={PrestacaoAdiantamentos} />
+      <Route path="/relatorios" component={Relatorios} />
       <Route component={NotFound} />
     </Switch>
   );

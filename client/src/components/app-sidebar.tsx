@@ -19,6 +19,7 @@ import {
   Building2,
   ClipboardCheck,
   LogOut,
+  FileBarChart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,11 @@ export function AppSidebar() {
       title: "Dashboard",
       url: "/dashboard",
       icon: Home,
+    },
+    {
+      title: "Relatórios",
+      url: "/relatorios",
+      icon: FileBarChart,
     },
   ];
 

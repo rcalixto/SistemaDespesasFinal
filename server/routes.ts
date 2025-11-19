@@ -1,7 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 import { storage } from "./storage";
+import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertCentroCustoSchema,
@@ -225,6 +227,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // ============================================================================
+  // RELATÓRIOS - Dados agregados para análise
+  // ============================================================================
+
+  app.get("/api/relatorios", isAuthenticated, async (req, res) => {
+    try {
+      // Obter parâmetros de filtro - garantir que são strings não vazias
+      const dataInicio = typeof req.query.dataInicio === 'string' && req.query.dataInicio.trim() !== '' ? req.query.dataInicio.trim() : null;
+      const dataFim = typeof req.query.dataFim === 'string' && req.query.dataFim.trim() !== '' ? req.query.dataFim.trim() : null;
+      const diretoria = typeof req.query.diretoria === 'string' && req.query.diretoria.trim() !== '' ? req.query.diretoria.trim() : null;
+      const statusFilter = typeof req.query.status === 'string' && req.query.status.trim() !== '' ? req.query.status.trim() : null;
+
+      // Query para adiantamentos agregados por status
+      const adiantamentosPorStatus = await db.execute(sql`
+        SELECT 
+          status,
+          COUNT(*)::int as quantidade,
+          SUM(valor_solicitado)::numeric as valor_total
+        FROM adiantamentos
+        WHERE deleted_at IS NULL
+          ${dataInicio ? sql`AND data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND data_solicitacao <= ${dataFim}::date` : sql``}
+          ${diretoria ? sql`AND diretoria_responsavel = ${diretoria}` : sql``}
+          ${statusFilter ? sql`AND status = ${statusFilter}` : sql``}
+        GROUP BY status
+      `);
+
+      // Query para reembolsos agregados por status
+      const reembolsosPorStatus = await db.execute(sql`
+        SELECT 
+          status,
+          COUNT(*)::int as quantidade,
+          SUM(valor_total_solicitado)::numeric as valor_total
+        FROM reembolsos
+        WHERE deleted_at IS NULL
+          ${dataInicio ? sql`AND data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND data_solicitacao <= ${dataFim}::date` : sql``}
+          ${statusFilter ? sql`AND status = ${statusFilter}` : sql``}
+        GROUP BY status
+      `);
+
+      // Query para reembolsos por categoria
+      const reembolsosPorCategoria = await db.execute(sql`
+        SELECT 
+          ri.categoria,
+          COUNT(DISTINCT ri.reembolso_id)::int as quantidade_reembolsos,
+          SUM(ri.valor)::numeric as valor_total
+        FROM reembolso_itens ri
+        INNER JOIN reembolsos r ON r.id = ri.reembolso_id
+        WHERE r.deleted_at IS NULL
+          ${dataInicio ? sql`AND r.data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND r.data_solicitacao <= ${dataFim}::date` : sql``}
+        GROUP BY ri.categoria
+        ORDER BY valor_total DESC
+      `);
+
+      // Query para despesas mensais (adiantamentos + reembolsos)
+      const despesasMensais = await db.execute(sql`
+        SELECT 
+          TO_CHAR(data_solicitacao, 'YYYY-MM') as mes,
+          'Adiantamentos' as tipo,
+          SUM(valor_solicitado)::numeric as valor_total
+        FROM adiantamentos
+        WHERE deleted_at IS NULL
+          ${dataInicio ? sql`AND data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND data_solicitacao <= ${dataFim}::date` : sql``}
+        GROUP BY TO_CHAR(data_solicitacao, 'YYYY-MM')
+        
+        UNION ALL
+        
+        SELECT 
+          TO_CHAR(data_solicitacao, 'YYYY-MM') as mes,
+          'Reembolsos' as tipo,
+          SUM(valor_total_solicitado)::numeric as valor_total
+        FROM reembolsos
+        WHERE deleted_at IS NULL
+          ${dataInicio ? sql`AND data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND data_solicitacao <= ${dataFim}::date` : sql``}
+        GROUP BY TO_CHAR(data_solicitacao, 'YYYY-MM')
+        
+        ORDER BY mes ASC
+      `);
+
+      // Query para top 10 colaboradores com mais despesas
+      const topColaboradores = await db.execute(sql`
+        SELECT 
+          c.nome,
+          c.departamento,
+          COUNT(DISTINCT a.id) + COUNT(DISTINCT r.id) as total_solicitacoes,
+          COALESCE(SUM(a.valor_solicitado), 0)::numeric + COALESCE(SUM(r.valor_total_solicitado), 0)::numeric as valor_total
+        FROM colaboradores c
+        LEFT JOIN adiantamentos a ON a.colaborador_id = c.id AND a.deleted_at IS NULL
+          ${dataInicio ? sql`AND a.data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND a.data_solicitacao <= ${dataFim}::date` : sql``}
+        LEFT JOIN reembolsos r ON r.colaborador_id = c.id AND r.deleted_at IS NULL
+          ${dataInicio ? sql`AND r.data_solicitacao >= ${dataInicio}::date` : sql``}
+          ${dataFim ? sql`AND r.data_solicitacao <= ${dataFim}::date` : sql``}
+        WHERE c.ativo = true
+        GROUP BY c.id, c.nome, c.departamento
+        HAVING COUNT(DISTINCT a.id) + COUNT(DISTINCT r.id) > 0
+        ORDER BY valor_total DESC
+        LIMIT 10
+      `);
+
+      res.json({
+        adiantamentosPorStatus: adiantamentosPorStatus.rows,
+        reembolsosPorStatus: reembolsosPorStatus.rows,
+        reembolsosPorCategoria: reembolsosPorCategoria.rows,
+        despesasMensais: despesasMensais.rows,
+        topColaboradores: topColaboradores.rows,
+      });
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ message: "Failed to fetch reports" });
     }
   });
 
