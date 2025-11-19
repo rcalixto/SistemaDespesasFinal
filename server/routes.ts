@@ -275,20 +275,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const result = await storage.createAdiantamento(dataToInsert as any);
       
-      // Send email notification to diretoria
-      try {
-        const diretoriaEmails = await getEmailsByRole('Diretoria');
-        if (diretoriaEmails.length > 0 && colaborador.email) {
-          await emailService.sendAdiantamentoCreatedEmail(
-            result,
-            colaborador.email,
-            diretoriaEmails
-          );
-        }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
-        // Don't fail the request if email fails
-      }
+      // Send email notification to diretoria (fire-and-forget)
+      const diretoriaEmails = await getEmailsByRole('Diretoria');
+      emailService.sendAdiantamentoCreatedEmail(
+        result,
+        colaborador.email,
+        diretoriaEmails
+      ).catch(() => {}); // Fire-and-forget: errors logged internally
       
       res.json(result);
     } catch (error) {
@@ -375,22 +368,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastUpdatedBy: userId,
       });
 
-      // Send email notification to financeiro and solicitante
-      try {
-        if (updated) {
-          const colaborador = await storage.getColaboradorById(updated.colaboradorId);
-          const financeiroEmails = await getEmailsByRole('Financeiro');
-          
-          if (colaborador?.email && financeiroEmails.length > 0) {
-            await emailService.sendAdiantamentoApprovedByDiretoriaEmail(
-              updated,
-              colaborador.email,
-              financeiroEmails
-            );
-          }
+      // Send email notification to financeiro and solicitante (fire-and-forget)
+      if (updated) {
+        const colaborador = await storage.getColaboradorById(updated.colaboradorId);
+        const financeiroEmails = await getEmailsByRole('Financeiro');
+        
+        if (colaborador?.email) {
+          emailService.sendAdiantamentoApprovedByDiretoriaEmail(
+            updated,
+            colaborador.email,
+            financeiroEmails
+          ).catch(() => {});
         }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
       }
 
       res.json(updated);
@@ -423,19 +412,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastUpdatedBy: userId,
       });
 
-      // Send email notification to solicitante
-      try {
-        if (updated) {
-          const colaborador = await storage.getColaboradorById(updated.colaboradorId);
-          if (colaborador?.email) {
-            await emailService.sendAdiantamentoApprovedByFinanceiroEmail(
-              updated,
-              colaborador.email
-            );
-          }
+      // Send email notification to solicitante (fire-and-forget)
+      if (updated) {
+        const colaborador = await storage.getColaboradorById(updated.colaboradorId);
+        if (colaborador?.email) {
+          emailService.sendAdiantamentoApprovedByFinanceiroEmail(
+            updated,
+            colaborador.email
+          ).catch(() => {});
         }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
       }
 
       res.json(updated);
@@ -461,23 +446,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastUpdatedBy: userId,
       });
 
-      // Send email notification to solicitante
-      try {
-        if (updated) {
-          const colaborador = await storage.getColaboradorById(updated.colaboradorId);
-          if (colaborador?.email) {
-            // Determine who rejected based on previous status
-            const rejectedBy = adiantamento.status === "Solicitado" ? 'Diretoria' : 'Financeiro';
-            await emailService.sendAdiantamentoRejectedEmail(
-              updated,
-              colaborador.email,
-              rejectedBy,
-              req.body.motivo
-            );
-          }
+      // Send email notification to solicitante (fire-and-forget)
+      if (updated) {
+        const colaborador = await storage.getColaboradorById(updated.colaboradorId);
+        if (colaborador?.email) {
+          // Determine who rejected based on previous status
+          const rejectedBy = adiantamento.status === "Solicitado" ? 'Diretoria' : 'Financeiro';
+          emailService.sendAdiantamentoRejectedEmail(
+            updated,
+            colaborador.email,
+            rejectedBy,
+            req.body.motivo
+          ).catch(() => {});
         }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
       }
 
       res.json(updated);
@@ -596,19 +577,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create reembolso and itens in a transaction
       const result = await storage.createReembolsoWithItens(validated, validatedItens);
       
-      // Send email notification to diretoria
-      try {
-        const diretoriaEmails = await getEmailsByRole('Diretoria');
-        if (diretoriaEmails.length > 0 && colaborador.email) {
-          await emailService.sendReembolsoCreatedEmail(
-            result,
-            colaborador.email,
-            diretoriaEmails
-          );
-        }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
-      }
+      // Send email notification to diretoria (fire-and-forget)
+      const diretoriaEmailsReembolso = await getEmailsByRole('Diretoria');
+      emailService.sendReembolsoCreatedEmail(
+        result,
+        colaborador.email,
+        diretoriaEmailsReembolso
+      ).catch(() => {});
       
       res.json(result);
     } catch (error) {
@@ -643,19 +618,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         formaPagamento: req.body.formaPagamento,
       });
 
-      // Send email notification to solicitante
-      try {
-        if (updated) {
-          const colaborador = await storage.getColaboradorById(updated.colaboradorId);
-          if (colaborador?.email) {
-            await emailService.sendReembolsoApprovedEmail(
-              updated,
-              colaborador.email
-            );
-          }
+      // Send email notification to solicitante (fire-and-forget)
+      if (updated) {
+        const colaboradorReemb = await storage.getColaboradorById(updated.colaboradorId);
+        if (colaboradorReemb?.email) {
+          emailService.sendReembolsoApprovedEmail(
+            updated,
+            colaboradorReemb.email
+          ).catch(() => {});
         }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
       }
 
       res.json(updated);
@@ -671,20 +642,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "Rejeitado",
       });
 
-      // Send email notification to solicitante
-      try {
-        if (updated) {
-          const colaborador = await storage.getColaboradorById(updated.colaboradorId);
-          if (colaborador?.email) {
-            await emailService.sendReembolsoRejectedEmail(
-              updated,
-              colaborador.email,
-              req.body.motivo
-            );
-          }
+      // Send email notification to solicitante (fire-and-forget)
+      if (updated) {
+        const colaboradorReembRej = await storage.getColaboradorById(updated.colaboradorId);
+        if (colaboradorReembRej?.email) {
+          emailService.sendReembolsoRejectedEmail(
+            updated,
+            colaboradorReembRej.email,
+            req.body.motivo
+          ).catch(() => {});
         }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
       }
 
       res.json(updated);
