@@ -30,6 +30,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Reembolso } from "@shared/schema";
@@ -282,10 +283,17 @@ export default function Reembolsos() {
                           Centro de Custo *
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Ex: CC-001 - Marketing"
-                            {...field}
-                            data-testid="input-centro-custo"
+                          <ComboboxCreatable
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Selecione ou crie um centro de custo"
+                            emptyText="Nenhum centro de custo encontrado"
+                            createText="Criar centro de custo"
+                            searchText="Buscar centro de custo"
+                            apiEndpoint="/api/centros-custo"
+                            queryKey="/api/centros-custo"
+                            label="Centro de custo"
+                            testId="select-centro-custo"
                           />
                         </FormControl>
                         <FormMessage />

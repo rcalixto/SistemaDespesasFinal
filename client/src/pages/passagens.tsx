@@ -26,6 +26,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Plane, Calendar, Hotel } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PassagemAerea, Hospedagem } from "@shared/schema";
@@ -206,7 +207,18 @@ export default function Passagens() {
                     <FormItem>
                       <FormLabel>Diretoria</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Presidência" {...field} data-testid="input-diretoria" />
+                        <ComboboxCreatable
+                          value={field.value || ""}
+                          onValueChange={field.onChange}
+                          placeholder="Selecione ou crie uma diretoria"
+                          emptyText="Nenhuma diretoria encontrada"
+                          createText="Criar diretoria"
+                          searchText="Buscar diretoria"
+                          apiEndpoint="/api/diretorias"
+                          queryKey="/api/diretorias"
+                          label="Diretoria"
+                          testId="select-diretoria"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

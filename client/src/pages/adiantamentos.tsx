@@ -26,6 +26,7 @@ import { Plus, Calendar, MapPin, TrendingUp, DollarSign } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { FileUpload } from "@/components/FileUpload";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Adiantamento } from "@shared/schema";
@@ -261,10 +262,17 @@ export default function Adiantamentos() {
                     <FormItem>
                       <FormLabel>Diretoria Responsável *</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Ex: Presidência"
-                          {...field}
-                          data-testid="input-diretoria"
+                        <ComboboxCreatable
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Selecione ou crie uma diretoria"
+                          emptyText="Nenhuma diretoria encontrada"
+                          createText="Criar diretoria"
+                          searchText="Buscar diretoria"
+                          apiEndpoint="/api/diretorias"
+                          queryKey="/api/diretorias"
+                          label="Diretoria"
+                          testId="select-diretoria"
                         />
                       </FormControl>
                       <FormMessage />
