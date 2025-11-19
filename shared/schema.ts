@@ -194,6 +194,7 @@ export const reembolsos = pgTable("reembolsos", {
   colaboradorId: integer("colaborador_id").notNull().references(() => colaboradores.id, { onDelete: 'cascade' }),
   dataSolicitacao: timestamp("data_solicitacao").defaultNow(),
   motivo: text("motivo").notNull(),
+  valorTotalSolicitado: decimal("valor_total_solicitado", { precision: 10, scale: 2 }).notNull(),
   centroCusto: varchar("centro_custo", { length: 255 }).notNull(),
   justificativa: text("justificativa").notNull(),
   status: varchar("status", { length: 50 }).notNull().default('Solicitado'),

@@ -10,7 +10,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
@@ -20,21 +19,46 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, FileText, DollarSign, Calendar, Building2 } from "lucide-react";
+import { Plus, FileText, DollarSign, Trash2, Receipt } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Reembolso } from "@shared/schema";
 import { z } from "zod";
 
+const CATEGORIAS = [
+  "Transporte",
+  "Alimentação",
+  "Hospedagem",
+  "Material de Escritório",
+  "Serviços de Terceiros",
+  "Comunicação",
+  "Treinamento",
+  "Outros",
+] as const;
+
+const itemSchema = z.object({
+  categoria: z.string().min(1, "Categoria é obrigatória"),
+  descricao: z.string().min(1, "Descrição é obrigatória"),
+  valor: z.coerce.number().positive("Valor deve ser maior que zero"),
+  comprovante: z.string().optional(),
+});
+
 const formSchema = z.object({
   motivo: z.string().min(1, "Motivo é obrigatório"),
-  valorTotalSolicitado: z.coerce.number().positive("Valor deve ser maior que zero"),
   centroCusto: z.string().min(1, "Centro de custo é obrigatório"),
   justificativa: z.string().min(10, "Justificativa deve ter pelo menos 10 caracteres"),
   observacoes: z.string().optional(),
+  itens: z.array(itemSchema).min(1, "Adicione pelo menos um item de despesa"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -51,16 +75,41 @@ export default function Reembolsos() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       motivo: "",
-      valorTotalSolicitado: 0,
       centroCusto: "",
       justificativa: "",
       observacoes: "",
+      itens: [
+        {
+          categoria: "",
+          descricao: "",
+          valor: 0,
+          comprovante: "",
+        },
+      ],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "itens",
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("POST", "/api/reembolsos", data);
+      // Calculate total from items
+      const valorTotalSolicitado = data.itens.reduce(
+        (sum, item) => sum + Number(item.valor),
+        0
+      );
+
+      return await apiRequest("POST", "/api/reembolsos", {
+        ...data,
+        valorTotalSolicitado,
+        itens: data.itens.map((item) => ({
+          ...item,
+          valor: Number(item.valor),
+        })),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reembolsos"] });
@@ -82,10 +131,7 @@ export default function Reembolsos() {
   });
 
   const onSubmit = (data: FormValues) => {
-    createMutation.mutate({
-      ...data,
-      valorTotalSolicitado: Number(data.valorTotalSolicitado),
-    });
+    createMutation.mutate(data);
   };
 
   const formatCurrency = (value: number | string) => {
@@ -100,6 +146,12 @@ export default function Reembolsos() {
     const d = typeof date === "string" ? new Date(date) : date;
     return new Intl.DateTimeFormat("pt-BR").format(d);
   };
+
+  const watchedItens = form.watch("itens");
+  const totalCalculado = watchedItens?.reduce(
+    (sum, item) => sum + (Number(item?.valor) || 0),
+    0
+  ) || 0;
 
   const summary = {
     total: reembolsos.length,
@@ -117,7 +169,7 @@ export default function Reembolsos() {
             Reembolsos
           </h1>
           <p style={{ color: "#4A5458" }}>
-            Solicite reembolsos de despesas corporativas
+            Solicite reembolsos de despesas corporativas com comprovantes
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -131,51 +183,53 @@ export default function Reembolsos() {
               Nova Solicitação
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle style={{ color: "#004650" }}>
                 Nova Solicitação de Reembolso
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="motivo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel style={{ color: "#004650" }}>Motivo *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex: Hospedagem em viagem a trabalho"
-                          {...field}
-                          data-testid="input-motivo"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="motivo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel style={{ color: "#004650" }}>Motivo *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: Hospedagem em viagem a trabalho"
+                            {...field}
+                            data-testid="input-motivo"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="centroCusto"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel style={{ color: "#004650" }}>
-                        Centro de Custo *
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex: CC-001 - Marketing"
-                          {...field}
-                          data-testid="input-centro-custo"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="centroCusto"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel style={{ color: "#004650" }}>
+                          Centro de Custo *
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: CC-001 - Marketing"
+                            {...field}
+                            data-testid="input-centro-custo"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
@@ -188,32 +242,9 @@ export default function Reembolsos() {
                       <FormControl>
                         <Textarea
                           placeholder="Descreva a justificativa para o reembolso..."
-                          rows={4}
+                          rows={3}
                           {...field}
                           data-testid="textarea-justificativa"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="valorTotalSolicitado"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel style={{ color: "#004650" }}>
-                        Valor Total Solicitado *
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          {...field}
-                          data-testid="input-valor"
                         />
                       </FormControl>
                       <FormMessage />
@@ -232,7 +263,7 @@ export default function Reembolsos() {
                       <FormControl>
                         <Textarea
                           placeholder="Observações adicionais (opcional)"
-                          rows={3}
+                          rows={2}
                           {...field}
                           data-testid="textarea-observacoes"
                         />
@@ -242,23 +273,193 @@ export default function Reembolsos() {
                   )}
                 />
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                    data-testid="button-cancel"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending}
-                    data-testid="button-submit"
-                    style={{ backgroundColor: "#004650", color: "white" }}
-                  >
-                    {createMutation.isPending ? "Salvando..." : "Criar Reembolso"}
-                  </Button>
+                <div className="border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold" style={{ color: "#004650" }}>
+                      Itens de Despesa *
+                    </h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        append({
+                          categoria: "",
+                          descricao: "",
+                          valor: 0,
+                          comprovante: "",
+                        })
+                      }
+                      data-testid="button-add-item"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Item
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {fields.map((field, index) => (
+                      <Card
+                        key={field.id}
+                        className="p-4"
+                        style={{ backgroundColor: "#F5F8FC" }}
+                      >
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium" style={{ color: "#004650" }}>
+                              Item {index + 1}
+                            </h4>
+                            {fields.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => remove(index)}
+                                data-testid={`button-remove-item-${index}`}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name={`itens.${index}.categoria`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel style={{ color: "#004650" }}>
+                                    Categoria *
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger data-testid={`select-categoria-${index}`}>
+                                        <SelectValue placeholder="Selecione a categoria" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {CATEGORIAS.map((cat) => (
+                                        <SelectItem key={cat} value={cat}>
+                                          {cat}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`itens.${index}.valor`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel style={{ color: "#004650" }}>
+                                    Valor *
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      placeholder="0.00"
+                                      {...field}
+                                      data-testid={`input-valor-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={form.control}
+                            name={`itens.${index}.descricao`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel style={{ color: "#004650" }}>
+                                  Descrição *
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Descreva o item da despesa"
+                                    {...field}
+                                    data-testid={`input-descricao-${index}`}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`itens.${index}.comprovante`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel style={{ color: "#004650" }}>
+                                  Comprovante (URL)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="https://exemplo.com/comprovante.pdf"
+                                    {...field}
+                                    data-testid={`input-comprovante-${index}`}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {form.formState.errors.itens && (
+                    <p className="text-sm text-destructive mt-2">
+                      {form.formState.errors.itens.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "#4A5458" }}>
+                      Valor Total Calculado:
+                    </p>
+                    <p
+                      className="text-2xl font-bold mt-1"
+                      style={{ color: "#004650" }}
+                      data-testid="total-calculated"
+                    >
+                      {formatCurrency(totalCalculado)}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDialogOpen(false)}
+                      data-testid="button-cancel"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      data-testid="button-submit"
+                      style={{ backgroundColor: "#004650", color: "white" }}
+                    >
+                      {createMutation.isPending ? "Salvando..." : "Criar Reembolso"}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>
@@ -320,7 +521,7 @@ export default function Reembolsos() {
               Nenhum reembolso encontrado
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              Crie sua primeira solicitação de reembolso
+              Crie sua primeira solicitação de reembolso com comprovantes
             </p>
             <Button variant="outline" onClick={() => setDialogOpen(true)}>
               Nova Solicitação
