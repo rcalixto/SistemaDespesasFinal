@@ -2,8 +2,7 @@ import PDFDocument from "pdfkit";
 import type {
   PrestacaoAdiantamento,
   PrestacaoAdiantamentoItem,
-  PrestacaoReembolso,
-  PrestacaoReembolsoItem,
+  ReembolsoItem,
   Adiantamento,
   Reembolso,
   Colaborador,
@@ -31,9 +30,8 @@ interface AdiantamentoReportData {
 }
 
 interface ReembolsoReportData {
-  prestacao: PrestacaoReembolso;
-  itens: PrestacaoReembolsoItem[];
   reembolso: Reembolso;
+  itens: ReembolsoItem[];
   colaborador: Colaborador;
 }
 
@@ -155,8 +153,8 @@ export function generateAdiantamentoReport(data: AdiantamentoReportData): PDFDoc
 
   doc.moveDown(2);
 
-  // Observations
-  const observacoes = prestacao.observacao || "Nenhuma observação registrada";
+  // Observations (for reembolso, use justificativa field)
+  const observacoes = reembolso.justificativa || "Nenhuma observação registrada";
   doc.fontSize(10)
     .fillColor("#004650")
     .text("Observações:", 50)
@@ -204,7 +202,7 @@ export function generateAdiantamentoReport(data: AdiantamentoReportData): PDFDoc
 }
 
 export function generateReembolsoReport(data: ReembolsoReportData): PDFDocument {
-  const { prestacao, itens, reembolso, colaborador } = data;
+  const { reembolso, itens, colaborador } = data;
   
   const doc = new PDFDocument({
     size: "A4",
@@ -259,10 +257,11 @@ export function generateReembolsoReport(data: ReembolsoReportData): PDFDocument 
 
   doc.fontSize(10).fillColor("#000");
   
-  const valorComprovado = Number(prestacao.valorComprovado) || 0;
+  // Calculate total from itens
+  const valorTotal = itens.reduce((sum, item) => sum + (Number(item.valor) || 0), 0);
 
-  doc.text(`Valor Comprovado:`, 60, boxY + 35);
-  doc.text(formatCurrency(valorComprovado), 200, boxY + 35, { width: 150 });
+  doc.text(`Valor Total:`, 60, boxY + 35);
+  doc.text(formatCurrency(valorTotal), 200, boxY + 35, { width: 150 });
 
   doc.y = boxY + 70;
   doc.moveDown(1);
@@ -309,8 +308,8 @@ export function generateReembolsoReport(data: ReembolsoReportData): PDFDocument 
 
   doc.moveDown(2);
 
-  // Observations
-  const observacoes = prestacao.observacao || "Nenhuma observação registrada";
+  // Observations (for reembolso, use justificativa field)
+  const observacoes = reembolso.justificativa || "Nenhuma observação registrada";
   doc.fontSize(10)
     .fillColor("#004650")
     .text("Observações:", 50)

@@ -7,8 +7,7 @@ import {
   prestacaoAdiantamento,
   prestacaoAdiantamentoItens,
   reembolsos,
-  prestacaoReembolso,
-  prestacaoReembolsoItens,
+  reembolsoItens,
   passagensAereas,
   hospedagens,
   viagensExecutadas,
@@ -27,10 +26,8 @@ import {
   type InsertPrestacaoAdiantamentoItem,
   type Reembolso,
   type InsertReembolso,
-  type PrestacaoReembolso,
-  type InsertPrestacaoReembolso,
-  type PrestacaoReembolsoItem,
-  type InsertPrestacaoReembolsoItem,
+  type ReembolsoItem,
+  type InsertReembolsoItem,
   type PassagemAerea,
   type InsertPassagemAerea,
   type Hospedagem,
@@ -92,14 +89,14 @@ export interface IStorage {
     dataFim?: string;
   }): Promise<Reembolso[]>;
   getReembolsoById(id: number): Promise<Reembolso | undefined>;
-  createReembolso(data: InsertReembolso): Promise<Reembolso>;
+  createReembolsoWithItens(reembolso: InsertReembolso, itens: InsertReembolsoItem[]): Promise<Reembolso & { itens: ReembolsoItem[] }>;
   updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined>;
 
-  // Prestação de Reembolso
-  getPrestacaoReembolsoById(id: number): Promise<PrestacaoReembolso | undefined>;
-  getPrestacaoReembolsoByReembolsoId(reembolsoId: number): Promise<PrestacaoReembolso | undefined>;
-  createPrestacaoReembolso(data: InsertPrestacaoReembolso): Promise<PrestacaoReembolso>;
-  updatePrestacaoReembolso(id: number, data: Partial<PrestacaoReembolso>): Promise<PrestacaoReembolso | undefined>;
+  // Itens de Despesa do Reembolso
+  getReembolsoItens(reembolsoId: number): Promise<ReembolsoItem[]>;
+  createReembolsoItem(data: InsertReembolsoItem): Promise<ReembolsoItem>;
+  updateReembolsoItem(id: number, data: Partial<ReembolsoItem>): Promise<ReembolsoItem | undefined>;
+  deleteReembolsoItem(id: number): Promise<void>;
 
   // Passagens Aéreas
   getPassagensAereas(filters?: {
@@ -415,9 +412,28 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async createReembolso(data: InsertReembolso): Promise<Reembolso> {
-    const result = await db.insert(reembolsos).values(data).returning();
-    return result[0];
+  async createReembolsoWithItens(
+    reembolsoData: InsertReembolso,
+    itens: InsertReembolsoItem[]
+  ): Promise<Reembolso & { itens: ReembolsoItem[] }> {
+    return await db.transaction(async (tx) => {
+      // Create reembolso
+      const [reembolso] = await tx.insert(reembolsos).values(reembolsoData).returning();
+      
+      // Create itens if provided
+      const createdItens: ReembolsoItem[] = [];
+      if (itens && itens.length > 0) {
+        for (const item of itens) {
+          const [createdItem] = await tx
+            .insert(reembolsoItens)
+            .values({ ...item, reembolsoId: reembolso.id })
+            .returning();
+          createdItens.push(createdItem);
+        }
+      }
+      
+      return { ...reembolso, itens: createdItens };
+    });
   }
 
   async updateReembolso(id: number, data: Partial<Reembolso>): Promise<Reembolso | undefined> {
@@ -430,92 +446,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============================================================================
-  // PRESTAÇÃO DE REEMBOLSO
+  // ITENS DE DESPESA DO REEMBOLSO
   // ============================================================================
 
-  async getPrestacaoReembolsoById(id: number): Promise<PrestacaoReembolso | undefined> {
-    const result = await db
-      .select()
-      .from(prestacaoReembolso)
-      .where(eq(prestacaoReembolso.id, id));
-    return result[0];
-  }
-
-  async getPrestacaoReembolsoByReembolsoId(reembolsoId: number): Promise<PrestacaoReembolso | undefined> {
-    const result = await db
-      .select()
-      .from(prestacaoReembolso)
-      .where(eq(prestacaoReembolso.reembolsoId, reembolsoId));
-    return result[0];
-  }
-
-  async createPrestacaoReembolso(data: InsertPrestacaoReembolso): Promise<PrestacaoReembolso> {
-    const result = await db.insert(prestacaoReembolso).values(data).returning();
-    return result[0];
-  }
-
-  async updatePrestacaoReembolso(id: number, data: Partial<PrestacaoReembolso>): Promise<PrestacaoReembolso | undefined> {
-    const result = await db
-      .update(prestacaoReembolso)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(prestacaoReembolso.id, id))
-      .returning();
-    return result[0];
-  }
-
-  // Create prestação with itens in a single transaction
-  async createPrestacaoReembolsoWithItens(
-    prestacaoData: InsertPrestacaoReembolso,
-    itens: InsertPrestacaoReembolsoItem[]
-  ): Promise<{ prestacao: PrestacaoReembolso; itens: PrestacaoReembolsoItem[] }> {
-    return await db.transaction(async (tx) => {
-      // Create prestação
-      const [prestacao] = await tx.insert(prestacaoReembolso).values(prestacaoData).returning();
-      
-      // Create itens if provided
-      const createdItens: PrestacaoReembolsoItem[] = [];
-      if (itens && itens.length > 0) {
-        for (const item of itens) {
-          const [createdItem] = await tx
-            .insert(prestacaoReembolsoItens)
-            .values({ ...item, prestacaoReembolsoId: prestacao.id })
-            .returning();
-          createdItens.push(createdItem);
-        }
-      }
-      
-      return { prestacao, itens: createdItens };
-    });
-  }
-
-  // ============================================================================
-  // ITENS DE DESPESA DA PRESTAÇÃO DE REEMBOLSO
-  // ============================================================================
-
-  async getPrestacaoReembolsoItens(prestacaoReembolsoId: number): Promise<PrestacaoReembolsoItem[]> {
+  async getReembolsoItens(reembolsoId: number): Promise<ReembolsoItem[]> {
     return await db
       .select()
-      .from(prestacaoReembolsoItens)
-      .where(eq(prestacaoReembolsoItens.prestacaoReembolsoId, prestacaoReembolsoId))
-      .orderBy(prestacaoReembolsoItens.id);
+      .from(reembolsoItens)
+      .where(eq(reembolsoItens.reembolsoId, reembolsoId))
+      .orderBy(reembolsoItens.id);
   }
 
-  async createPrestacaoReembolsoItem(data: InsertPrestacaoReembolsoItem): Promise<PrestacaoReembolsoItem> {
-    const result = await db.insert(prestacaoReembolsoItens).values(data).returning();
+  async createReembolsoItem(data: InsertReembolsoItem): Promise<ReembolsoItem> {
+    const result = await db.insert(reembolsoItens).values(data).returning();
     return result[0];
   }
 
-  async updatePrestacaoReembolsoItem(id: number, data: Partial<PrestacaoReembolsoItem>): Promise<PrestacaoReembolsoItem | undefined> {
+  async updateReembolsoItem(id: number, data: Partial<ReembolsoItem>): Promise<ReembolsoItem | undefined> {
     const result = await db
-      .update(prestacaoReembolsoItens)
+      .update(reembolsoItens)
       .set(data)
-      .where(eq(prestacaoReembolsoItens.id, id))
+      .where(eq(reembolsoItens.id, id))
       .returning();
     return result[0];
   }
 
-  async deletePrestacaoReembolsoItem(id: number): Promise<void> {
-    await db.delete(prestacaoReembolsoItens).where(eq(prestacaoReembolsoItens.id, id));
+  async deleteReembolsoItem(id: number): Promise<void> {
+    await db.delete(reembolsoItens).where(eq(reembolsoItens.id, id));
   }
 
   // ============================================================================

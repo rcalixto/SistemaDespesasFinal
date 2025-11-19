@@ -186,6 +186,8 @@ export type CategoriaDespesa = typeof CATEGORIAS_DESPESA[number];
 // ====================================================================
 // REEMBOLSOS (Reimbursements)
 // ====================================================================
+// Colaborador já gastou com recursos próprios e solicita reembolso
+// informando os itens, valores e comprovantes no momento da solicitação
 
 export const reembolsos = pgTable("reembolsos", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -194,14 +196,12 @@ export const reembolsos = pgTable("reembolsos", {
   motivo: text("motivo").notNull(),
   centroCusto: varchar("centro_custo", { length: 255 }).notNull(),
   justificativa: text("justificativa").notNull(),
-  valorTotalSolicitado: decimal("valor_total_solicitado", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status", { length: 50 }).notNull().default('Solicitado'),
   aprovacaoDiretoria: boolean("aprovacao_diretoria"),
   aprovacaoFinanceiro: boolean("aprovacao_financeiro"),
   dataPagamento: timestamp("data_pagamento"),
   formaPagamento: varchar("forma_pagamento", { length: 100 }),
   observacoes: text("observacoes"),
-  anexos: jsonb("anexos").$type<string[]>().default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -214,64 +214,38 @@ export const insertReembolsoSchema = createInsertSchema(reembolsos).omit({
   dataPagamento: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
-  valorTotalSolicitado: z.number().positive(),
 });
 
 export type InsertReembolso = z.infer<typeof insertReembolsoSchema>;
 export type Reembolso = typeof reembolsos.$inferSelect;
 
 // ====================================================================
-// PRESTAÇÃO DE REEMBOLSO (Reimbursement Settlement)
+// ITENS DE DESPESA DO REEMBOLSO
 // ====================================================================
+// Cada item representa uma despesa já realizada pelo colaborador
 
-export const prestacaoReembolso = pgTable("prestacao_reembolso", {
+export const reembolsoItens = pgTable("reembolso_itens", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  reembolsoId: integer("reembolso_id").notNull().unique().references(() => reembolsos.id, { onDelete: 'cascade' }),
-  dataEnvio: timestamp("data_envio").defaultNow(),
-  valorComprovado: decimal("valor_comprovado", { precision: 10, scale: 2 }).notNull(),
-  status: varchar("status", { length: 50 }).notNull().default('Pendente'),
-  observacoes: text("observacoes"),
-  anexos: jsonb("anexos").$type<string[]>().default([]),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertPrestacaoReembolsoSchema = createInsertSchema(prestacaoReembolso).omit({
-  id: true,
-  dataEnvio: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  valorComprovado: z.number().positive(),
-});
-
-export type InsertPrestacaoReembolso = z.infer<typeof insertPrestacaoReembolsoSchema>;
-export type PrestacaoReembolso = typeof prestacaoReembolso.$inferSelect;
-
-// ====================================================================
-// ITENS DE DESPESA DA PRESTAÇÃO DE REEMBOLSO
-// ====================================================================
-
-export const prestacaoReembolsoItens = pgTable("prestacao_reembolso_itens", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  prestacaoReembolsoId: integer("prestacao_reembolso_id").notNull().references(() => prestacaoReembolso.id, { onDelete: 'cascade' }),
+  reembolsoId: integer("reembolso_id").notNull().references(() => reembolsos.id, { onDelete: 'cascade' }),
   categoria: varchar("categoria", { length: 100 }).notNull(),
-  descricao: text("descricao"),
+  descricao: text("descricao").notNull(),
   valor: decimal("valor", { precision: 10, scale: 2 }).notNull(),
+  dataDespesa: timestamp("data_despesa").notNull(),
   comprovante: varchar("comprovante", { length: 500 }),
+  observacoes: text("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertPrestacaoReembolsoItemSchema = createInsertSchema(prestacaoReembolsoItens).omit({
+export const insertReembolsoItemSchema = createInsertSchema(reembolsoItens).omit({
   id: true,
   createdAt: true,
 }).extend({
   valor: z.number().positive(),
+  dataDespesa: z.string(), // Será convertido para timestamp
 });
 
-export type InsertPrestacaoReembolsoItem = z.infer<typeof insertPrestacaoReembolsoItemSchema>;
-export type PrestacaoReembolsoItem = typeof prestacaoReembolsoItens.$inferSelect;
+export type InsertReembolsoItem = z.infer<typeof insertReembolsoItemSchema>;
+export type ReembolsoItem = typeof reembolsoItens.$inferSelect;
 
 // ====================================================================
 // PASSAGENS AÉREAS (Flight Tickets)
@@ -473,20 +447,17 @@ export const prestacaoAdiantamentoRelations = relations(prestacaoAdiantamento, (
   }),
 }));
 
-export const reembolsosRelations = relations(reembolsos, ({ one }) => ({
+export const reembolsosRelations = relations(reembolsos, ({ one, many }) => ({
   colaborador: one(colaboradores, {
     fields: [reembolsos.colaboradorId],
     references: [colaboradores.id],
   }),
-  prestacao: one(prestacaoReembolso, {
-    fields: [reembolsos.id],
-    references: [prestacaoReembolso.reembolsoId],
-  }),
+  itens: many(reembolsoItens),
 }));
 
-export const prestacaoReembolsoRelations = relations(prestacaoReembolso, ({ one }) => ({
+export const reembolsoItensRelations = relations(reembolsoItens, ({ one }) => ({
   reembolso: one(reembolsos, {
-    fields: [prestacaoReembolso.reembolsoId],
+    fields: [reembolsoItens.reembolsoId],
     references: [reembolsos.id],
   }),
 }));

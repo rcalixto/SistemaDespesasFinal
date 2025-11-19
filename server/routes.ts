@@ -6,13 +6,15 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertAdiantamentoSchema,
   insertReembolsoSchema,
+  insertReembolsoItemSchema,
   insertPassagemAereaSchema,
   insertHospedagemSchema,
   insertViagemExecutadaSchema,
   insertHospedagemExecutadaSchema,
   insertPrestacaoAdiantamentoSchema,
   insertPrestacaoAdiantamentoItemSchema,
-  insertPrestacaoReembolsoSchema,
+  type InsertReembolsoItem,
+  type InsertPrestacaoAdiantamentoItem,
 } from "@shared/schema";
 // Referenced from: blueprint:javascript_object_storage
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -338,12 +340,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Colaborador not found" });
       }
 
+      // Extract itens from request body
+      const { itens, ...reembolsoData } = req.body;
+      
+      // Validate reembolso data
       const validated = insertReembolsoSchema.parse({
-        ...req.body,
+        ...reembolsoData,
         colaboradorId: colaborador.id,
       });
-
-      const result = await storage.createReembolso(validated);
+      
+      // Validate itens if provided
+      const validatedItens: InsertReembolsoItem[] = [];
+      if (itens && Array.isArray(itens) && itens.length > 0) {
+        for (const item of itens) {
+          // Parse without reembolsoId (will be added by storage)
+          const { reembolsoId, ...itemData } = item;
+          const validatedItem = insertReembolsoItemSchema
+            .omit({ reembolsoId: true })
+            .parse(itemData);
+          validatedItens.push(validatedItem as InsertReembolsoItem);
+        }
+      }
+      
+      // Create reembolso and itens in a transaction
+      const result = await storage.createReembolsoWithItens(validated, validatedItens);
+      
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -791,64 +812,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // PRESTAÇÃO DE REEMBOLSO
+  // ITENS DE DESPESA DO REEMBOLSO
   // ============================================================================
 
-  app.get("/api/prestacao-reembolso/by-reembolso/:reembolsoId", isAuthenticated, async (req, res) => {
+  // GET all itens de despesa for a reembolso
+  app.get("/api/reembolsos/:id/itens", isAuthenticated, async (req, res) => {
     try {
-      const reembolsoId = parseInt(req.params.reembolsoId);
-      const prestacao = await storage.getPrestacaoReembolsoByReembolsoId(reembolsoId);
-      if (!prestacao) {
-        return res.status(404).json({ message: "Prestação not found" });
-      }
-      res.json(prestacao);
-    } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
-
-  app.post("/api/prestacao-reembolso", isAuthenticated, async (req, res) => {
-    try {
-      // Extract itens from request body
-      const { itens, ...prestacaoData } = req.body;
-      
-      // Validate prestação data
-      const validated = insertPrestacaoReembolsoSchema.parse(prestacaoData);
-      
-      // Validate itens if provided
-      const validatedItens: InsertPrestacaoReembolsoItem[] = [];
-      if (itens && Array.isArray(itens) && itens.length > 0) {
-        for (const item of itens) {
-          // Parse without prestacaoReembolsoId (will be added by storage)
-          const { prestacaoReembolsoId, ...itemData } = item;
-          const validatedItem = insertPrestacaoReembolsoItemSchema
-            .omit({ prestacaoReembolsoId: true })
-            .parse(itemData);
-          validatedItens.push(validatedItem as InsertPrestacaoReembolsoItem);
-        }
-      }
-      
-      // Create prestação and itens in a transaction
-      const result = await storage.createPrestacaoReembolsoWithItens(validated, validatedItens);
-      
-      res.json(result);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
-
-  // ============================================================================
-  // ITENS DE DESPESA DA PRESTAÇÃO DE REEMBOLSO
-  // ============================================================================
-
-  // GET all itens de despesa for a prestação
-  app.get("/api/prestacao-reembolso/:id/itens", isAuthenticated, async (req, res) => {
-    try {
-      const prestacaoId = parseInt(req.params.id);
-      const itens = await storage.getPrestacaoReembolsoItens(prestacaoId);
+      const reembolsoId = parseInt(req.params.id);
+      const itens = await storage.getReembolsoItens(reembolsoId);
       res.json(itens);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -856,14 +827,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST create new item de despesa
-  app.post("/api/prestacao-reembolso/:id/itens", isAuthenticated, async (req, res) => {
+  app.post("/api/reembolsos/:id/itens", isAuthenticated, async (req, res) => {
     try {
-      const prestacaoId = parseInt(req.params.id);
-      const validated = insertPrestacaoReembolsoItemSchema.parse({
+      const reembolsoId = parseInt(req.params.id);
+      const validated = insertReembolsoItemSchema.parse({
         ...req.body,
-        prestacaoReembolsoId: prestacaoId,
+        reembolsoId: reembolsoId,
       });
-      const result = await storage.createPrestacaoReembolsoItem(validated);
+      const result = await storage.createReembolsoItem(validated);
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -874,10 +845,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH update item de despesa
-  app.patch("/api/prestacao-reembolso/itens/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/reembolsos/itens/:id", isAuthenticated, async (req, res) => {
     try {
       const itemId = parseInt(req.params.id);
-      const result = await storage.updatePrestacaoReembolsoItem(itemId, req.body);
+      const result = await storage.updateReembolsoItem(itemId, req.body);
       if (!result) {
         return res.status(404).json({ message: "Item not found" });
       }
@@ -888,10 +859,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE item de despesa
-  app.delete("/api/prestacao-reembolso/itens/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/reembolsos/itens/:id", isAuthenticated, async (req, res) => {
     try {
       const itemId = parseInt(req.params.id);
-      await storage.deletePrestacaoReembolsoItem(itemId);
+      await storage.deleteReembolsoItem(itemId);
       res.json({ message: "Item deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -952,25 +923,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET PDF report for reembolso prestação
-  app.get("/api/prestacao-reembolso/:id/relatorio", isAuthenticated, async (req, res) => {
+  // GET PDF report for reembolso
+  app.get("/api/reembolsos/:id/relatorio", isAuthenticated, async (req, res) => {
     try {
-      const prestacaoId = parseInt(req.params.id);
+      const reembolsoId = parseInt(req.params.id);
       
-      // Fetch prestação
-      const prestacao = await storage.getPrestacaoReembolsoById(prestacaoId);
-      if (!prestacao) {
-        return res.status(404).json({ message: "Prestação not found" });
-      }
-
-      // Fetch items
-      const itens = await storage.getPrestacaoReembolsoItens(prestacaoId);
-
       // Fetch reembolso
-      const reembolso = await storage.getReembolsoById(prestacao.reembolsoId);
+      const reembolso = await storage.getReembolsoById(reembolsoId);
       if (!reembolso) {
         return res.status(404).json({ message: "Reembolso not found" });
       }
+
+      // Fetch items
+      const itens = await storage.getReembolsoItens(reembolsoId);
 
       // Fetch colaborador
       const colaborador = await storage.getColaboradorById(reembolso.colaboradorId);
@@ -981,9 +946,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate PDF
       const { generateReembolsoReport } = await import("./pdfGenerator");
       const doc = generateReembolsoReport({
-        prestacao,
-        itens,
         reembolso,
+        itens,
         colaborador,
       });
 
@@ -991,7 +955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="prestacao-reembolso-${prestacaoId}.pdf"`
+        `attachment; filename="reembolso-${reembolsoId}.pdf"`
       );
 
       // Pipe PDF to response
