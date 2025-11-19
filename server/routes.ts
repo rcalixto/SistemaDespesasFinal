@@ -340,11 +340,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Colaborador not found" });
       }
 
-      // Extract itens from request body
-      const { itens, ...reembolsoData } = req.body;
+      // Extract itens and remove valorTotalSolicitado from request body
+      // (server will calculate total from itens for security)
+      const { itens, valorTotalSolicitado, ...reembolsoData } = req.body;
       
-      // Validate reembolso data
-      const validated = insertReembolsoSchema.parse({
+      // Validate reembolso data (without valorTotalSolicitado)
+      const validated = insertReembolsoSchema.omit({ valorTotalSolicitado: true }).parse({
         ...reembolsoData,
         colaboradorId: colaborador.id,
       });

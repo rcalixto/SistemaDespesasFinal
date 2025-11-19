@@ -153,8 +153,8 @@ export function generateAdiantamentoReport(data: AdiantamentoReportData): PDFDoc
 
   doc.moveDown(2);
 
-  // Observations (for reembolso, use justificativa field)
-  const observacoes = reembolso.justificativa || "Nenhuma observação registrada";
+  // Observations
+  const observacoes = prestacao.observacao || "Nenhuma observação registrada";
   doc.fontSize(10)
     .fillColor("#004650")
     .text("Observações:", 50)
@@ -236,13 +236,13 @@ export function generateReembolsoReport(data: ReembolsoReportData): PDFDocument 
   // Left column
   doc.text(`Colaborador: ${colaborador.nome}`, 50, startY);
   doc.text(`Departamento: ${colaborador.departamento || "N/A"}`, 50);
-  doc.text(`Centro de Custo: ${colaborador.centroCusto || "N/A"}`, 50);
-  doc.text(`Data de Emissão: ${formatDate(new Date())}`, 50);
+  doc.text(`Centro de Custo: ${reembolso.centroCusto || "N/A"}`, 50);
+  doc.text(`Data de Solicitação: ${formatDate(reembolso.dataSolicitacao || new Date())}`, 50);
 
   // Right column
-  doc.text(`Descrição: ${reembolso.descricao}`, 320, startY);
-  doc.text(`Data da Despesa: ${formatDate(reembolso.dataDespesa)}`, 320);
-  doc.text(`Valor Solicitado: ${formatCurrency(Number(reembolso.valorSolicitado))}`, 320);
+  doc.text(`Motivo: ${reembolso.motivo}`, 320, startY);
+  doc.text(`Status: ${reembolso.status}`, 320);
+  doc.text(`Valor Total: ${formatCurrency(Number(reembolso.valorTotalSolicitado))}`, 320);
 
   doc.moveDown(2);
 
@@ -308,15 +308,25 @@ export function generateReembolsoReport(data: ReembolsoReportData): PDFDocument 
 
   doc.moveDown(2);
 
-  // Observations (for reembolso, use justificativa field)
-  const observacoes = reembolso.justificativa || "Nenhuma observação registrada";
+  // Justificativa
   doc.fontSize(10)
     .fillColor("#004650")
-    .text("Observações:", 50)
+    .text("Justificativa:", 50)
     .fillColor("#000")
     .fontSize(9)
-    .text(observacoes, 50, doc.y + 5, { width: 495 })
+    .text(reembolso.justificativa, 50, doc.y + 5, { width: 495 })
     .moveDown(1);
+
+  // Observations (optional notes)
+  if (reembolso.observacoes) {
+    doc.fontSize(10)
+      .fillColor("#004650")
+      .text("Observações:", 50)
+      .fillColor("#000")
+      .fontSize(9)
+      .text(reembolso.observacoes, 50, doc.y + 5, { width: 495 })
+      .moveDown(1);
+  }
 
   // Signatures section
   if (doc.y > 650) {

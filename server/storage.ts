@@ -416,20 +416,32 @@ export class DatabaseStorage implements IStorage {
     reembolsoData: InsertReembolso,
     itens: InsertReembolsoItem[]
   ): Promise<Reembolso & { itens: ReembolsoItem[] }> {
+    // Validate itens array is not empty
+    if (!itens || itens.length === 0) {
+      throw new Error("Reembolso deve ter pelo menos um item de despesa");
+    }
+
     return await db.transaction(async (tx) => {
-      // Create reembolso
-      const [reembolso] = await tx.insert(reembolsos).values(reembolsoData).returning();
+      // Calculate total from itens (server-side, don't trust client)
+      const valorTotalSolicitado = itens.reduce(
+        (sum, item) => sum + Number(item.valor),
+        0
+      );
+
+      // Create reembolso with server-calculated total
+      const [reembolso] = await tx
+        .insert(reembolsos)
+        .values({ ...reembolsoData, valorTotalSolicitado: valorTotalSolicitado.toFixed(2) })
+        .returning();
       
-      // Create itens if provided
+      // Create itens
       const createdItens: ReembolsoItem[] = [];
-      if (itens && itens.length > 0) {
-        for (const item of itens) {
-          const [createdItem] = await tx
-            .insert(reembolsoItens)
-            .values({ ...item, reembolsoId: reembolso.id })
-            .returning();
-          createdItens.push(createdItem);
-        }
+      for (const item of itens) {
+        const [createdItem] = await tx
+          .insert(reembolsoItens)
+          .values({ ...item, reembolsoId: reembolso.id })
+          .returning();
+        createdItens.push(createdItem);
       }
       
       return { ...reembolso, itens: createdItens };
