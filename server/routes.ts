@@ -4,6 +4,8 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
+  insertCentroCustoSchema,
+  insertDiretoriaSchema,
   insertAdiantamentoSchema,
   insertReembolsoSchema,
   insertReembolsoItemSchema,
@@ -139,6 +141,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting comprovante ACL:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================================================
+  // CENTROS DE CUSTO
+  // ============================================================================
+
+  app.get("/api/centros-custo", isAuthenticated, async (req, res) => {
+    try {
+      const centros = await storage.getCentrosCusto();
+      res.json(centros);
+    } catch (error) {
+      console.error("Error getting centros de custo:", error);
+      res.status(500).json({ error: "Failed to get centros de custo" });
+    }
+  });
+
+  app.post("/api/centros-custo", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertCentroCustoSchema.parse(req.body);
+      const centro = await storage.createCentroCusto(validatedData);
+      res.status(201).json(centro);
+    } catch (error) {
+      console.error("Error creating centro de custo:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create centro de custo" });
+    }
+  });
+
+  // ============================================================================
+  // DIRETORIAS
+  // ============================================================================
+
+  app.get("/api/diretorias", isAuthenticated, async (req, res) => {
+    try {
+      const diretorias = await storage.getDiretorias();
+      res.json(diretorias);
+    } catch (error) {
+      console.error("Error getting diretorias:", error);
+      res.status(500).json({ error: "Failed to get diretorias" });
+    }
+  });
+
+  app.post("/api/diretorias", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertDiretoriaSchema.parse(req.body);
+      const diretoria = await storage.createDiretoria(validatedData);
+      res.status(201).json(diretoria);
+    } catch (error) {
+      console.error("Error creating diretoria:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create diretoria" });
     }
   });
 

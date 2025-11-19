@@ -64,6 +64,26 @@ export type InsertCentroCusto = z.infer<typeof insertCentroCustoSchema>;
 export type CentroCusto = typeof centrosCusto.$inferSelect;
 
 // ====================================================================
+// DIRETORIAS (Directorates)
+// ====================================================================
+
+export const diretorias = pgTable("diretorias", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  nome: varchar("nome", { length: 255 }).notNull().unique(),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDiretoriaSchema = createInsertSchema(diretorias).omit({
+  id: true,
+  ativo: true,
+  createdAt: true,
+});
+
+export type InsertDiretoria = z.infer<typeof insertDiretoriaSchema>;
+export type Diretoria = typeof diretorias.$inferSelect;
+
+// ====================================================================
 // COLABORADORES (Employees/Staff)
 // ====================================================================
 

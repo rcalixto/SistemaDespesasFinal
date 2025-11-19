@@ -1,6 +1,8 @@
 import { db } from "./db";
 import {
   users,
+  centrosCusto,
+  diretorias,
   colaboradores,
   colaboradorRoles,
   adiantamentos,
@@ -14,6 +16,10 @@ import {
   hospedagensExecutadas,
   type User,
   type UpsertUser,
+  type CentroCusto,
+  type InsertCentroCusto,
+  type Diretoria,
+  type InsertDiretoria,
   type Colaborador,
   type InsertColaborador,
   type ColaboradorRole,
@@ -43,6 +49,16 @@ export interface IStorage {
   // Users (for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+
+  // Centros de Custo
+  getCentrosCusto(): Promise<CentroCusto[]>;
+  getCentroCustoById(id: number): Promise<CentroCusto | undefined>;
+  createCentroCusto(data: InsertCentroCusto): Promise<CentroCusto>;
+
+  // Diretorias
+  getDiretorias(): Promise<Diretoria[]>;
+  getDiretoriaById(id: number): Promise<Diretoria | undefined>;
+  createDiretoria(data: InsertDiretoria): Promise<Diretoria>;
 
   // Colaboradores
   getColaboradores(): Promise<Colaborador[]>;
@@ -174,6 +190,42 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // ============================================================================
+  // CENTROS DE CUSTO
+  // ============================================================================
+
+  async getCentrosCusto(): Promise<CentroCusto[]> {
+    return await db.select().from(centrosCusto).where(eq(centrosCusto.ativo, true)).orderBy(centrosCusto.nome);
+  }
+
+  async getCentroCustoById(id: number): Promise<CentroCusto | undefined> {
+    const result = await db.select().from(centrosCusto).where(eq(centrosCusto.id, id));
+    return result[0];
+  }
+
+  async createCentroCusto(data: InsertCentroCusto): Promise<CentroCusto> {
+    const result = await db.insert(centrosCusto).values(data).returning();
+    return result[0];
+  }
+
+  // ============================================================================
+  // DIRETORIAS
+  // ============================================================================
+
+  async getDiretorias(): Promise<Diretoria[]> {
+    return await db.select().from(diretorias).where(eq(diretorias.ativo, true)).orderBy(diretorias.nome);
+  }
+
+  async getDiretoriaById(id: number): Promise<Diretoria | undefined> {
+    const result = await db.select().from(diretorias).where(eq(diretorias.id, id));
+    return result[0];
+  }
+
+  async createDiretoria(data: InsertDiretoria): Promise<Diretoria> {
+    const result = await db.insert(diretorias).values(data).returning();
+    return result[0];
   }
 
   // ============================================================================
