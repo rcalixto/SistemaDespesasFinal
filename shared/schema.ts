@@ -149,7 +149,7 @@ export const insertAdiantamentoSchema = createInsertSchema(adiantamentos).omit({
 }).extend({
   dataIda: z.string(),
   dataVolta: z.string(),
-  valorSolicitado: z.number().positive(),
+  valorSolicitado: z.coerce.number().positive(),
 });
 
 export type InsertAdiantamento = z.infer<typeof insertAdiantamentoSchema>;
