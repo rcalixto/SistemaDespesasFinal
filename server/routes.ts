@@ -359,6 +359,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PDF Report: Relatório de Despesas de Viagem
+  app.get("/api/relatorio/viagem/:id", isAuthenticated, async (req, res) => {
+    try {
+      const adiantamentoId = parseInt(req.params.id);
+
+      // Fetch adiantamento
+      const adiantamento = await storage.getAdiantamentoById(adiantamentoId);
+      if (!adiantamento) {
+        return res.status(404).json({ message: "Adiantamento not found" });
+      }
+
+      // Fetch colaborador
+      const colaborador = await storage.getColaboradorById(adiantamento.colaboradorId);
+      if (!colaborador) {
+        return res.status(404).json({ message: "Colaborador not found" });
+      }
+
+      // Fetch prestacao de contas (optional)
+      let prestacao = null;
+      let prestacaoItens: any[] = [];
+      try {
+        prestacao = await storage.getPrestacaoByAdiantamentoId(adiantamentoId);
+        if (prestacao) {
+          prestacaoItens = await storage.getPrestacaoItens(prestacao.id);
+        }
+      } catch (error) {
+        // Prestacao may not exist yet
+      }
+
+      // Fetch reembolsos related to this trip (optional)
+      // Note: This is a simplified approach - in production you might want to filter reembolsos by date range or other criteria
+      const reembolsos: any[] = [];
+      const reembolsoItens: any[] = [];
+
+      // Generate PDF
+      const { generateViagemReport } = await import("./pdfGenerator");
+      const doc = generateViagemReport({
+        adiantamento,
+        colaborador,
+        prestacao: prestacao || undefined,
+        prestacaoItens,
+        reembolsos,
+        reembolsoItens,
+      });
+
+      // Set response headers
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="relatorio-viagem-${adiantamentoId}.pdf"`
+      );
+
+      // Pipe PDF to response
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      console.error("Error generating viagem report:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // ============================================================================
   // ADIANTAMENTOS
   // ============================================================================
