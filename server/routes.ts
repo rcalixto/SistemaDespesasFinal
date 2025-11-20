@@ -385,12 +385,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/adiantamentos", isAuthenticated, async (req, res) => {
+  app.post("/api/adiantamentos", isAuthenticated, upload.array('anexos'), async (req, res) => {
     try {
       const colaborador = await getCurrentColaborador(req);
       if (!colaborador) {
         return res.status(404).json({ message: "Colaborador not found" });
       }
+
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
 
       const validated = insertAdiantamentoSchema.parse({
         ...req.body,
@@ -398,11 +401,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Convert string dates to Date objects for database
-      const dataToInsert = {
+      const dataToInsert: any = {
         ...validated,
         dataIda: new Date(validated.dataIda),
         dataVolta: new Date(validated.dataVolta),
       };
+
+      // Add file metadata to anexos array
+      if (files.length > 0) {
+        dataToInsert.anexos = files.map(file => ({
+          originalName: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        }));
+      }
 
       const result = await storage.createAdiantamento(dataToInsert as any);
       
@@ -423,7 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/adiantamentos/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/adiantamentos/:id", isAuthenticated, upload.array('anexos'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = req.user as any;
@@ -458,8 +471,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Extract files from multer
+      const files = (req.files as Express.Multer.File[]) || [];
+
       // Convert date strings to Date objects if present
-      const updateData = { ...req.body, lastUpdatedBy: userId };
+      const updateData: any = { ...req.body, lastUpdatedBy: userId };
       if (updateData.dataIda && typeof updateData.dataIda === 'string') {
         updateData.dataIda = new Date(updateData.dataIda);
       }
@@ -468,6 +484,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (updateData.dataPagamento && typeof updateData.dataPagamento === 'string') {
         updateData.dataPagamento = new Date(updateData.dataPagamento);
+      }
+
+      // Handle anexos: preserve old ones and add new files
+      if (files.length > 0) {
+        const existingAnexos = Array.isArray(adiantamento.anexos) ? adiantamento.anexos : [];
+        const newAnexos = files.map(file => ({
+          originalName: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        }));
+        updateData.anexos = [...existingAnexos, ...newAnexos];
       }
 
       const updated = await storage.updateAdiantamento(id, updateData);

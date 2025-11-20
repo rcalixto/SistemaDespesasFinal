@@ -81,10 +81,40 @@ export default function Adiantamentos() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      if (editingId) {
-        return await apiRequest("PATCH", `/api/adiantamentos/${editingId}`, data);
+      const formData = new FormData();
+      
+      // Add all form fields to FormData
+      formData.append("localViagem", data.localViagem);
+      formData.append("motivo", data.motivo);
+      formData.append("dataIda", data.dataIda);
+      formData.append("dataVolta", data.dataVolta);
+      formData.append("valorSolicitado", data.valorSolicitado.toString());
+      formData.append("diretoriaResponsavel", data.diretoriaResponsavel);
+      if (data.observacoes) {
+        formData.append("observacoes", data.observacoes);
       }
-      return await apiRequest("POST", "/api/adiantamentos", data);
+
+      // Add anexos (files)
+      anexos.forEach((file) => {
+        formData.append("anexos", file);
+      });
+
+      // Send FormData instead of JSON
+      const url = editingId ? `/api/adiantamentos/${editingId}` : "/api/adiantamentos";
+      const method = editingId ? "PATCH" : "POST";
+      
+      const response = await fetch(url, {
+        method,
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao salvar adiantamento");
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/adiantamentos"] });
@@ -164,7 +194,17 @@ export default function Adiantamentos() {
       diretoriaResponsavel: item.diretoriaResponsavel,
       observacoes: item.observacoes || '',
     });
+    setAnexos([]);
     setDialogOpen(true);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingId(null);
+      form.reset();
+      setAnexos([]);
+    }
   };
 
   const handleDelete = (item: Adiantamento) => {
@@ -219,7 +259,7 @@ export default function Adiantamentos() {
             Gerencie suas solicitações de adiantamento para viagens
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button className="gap-2" data-testid="new-adiantamento">
               <Plus className="w-4 h-4" />
