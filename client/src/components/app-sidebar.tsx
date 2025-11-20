@@ -65,12 +65,12 @@ export function AppSidebar() {
 
   const execucoesItems = [
     {
-      title: "Viagens Executadas",
+      title: "Viagens Realizadas",
       url: "/viagens-executadas",
       icon: MapPin,
     },
     {
-      title: "Hospedagens Executadas",
+      title: "Hospedagens Realizadas",
       url: "/hospedagens-executadas",
       icon: Building2,
     },
@@ -147,7 +147,7 @@ export function AppSidebar() {
         {/* Execuções */}
         <SidebarGroup>
           <SidebarGroupLabel style={{ color: "#004650" }}>
-            Execuções
+            Registros de Viagem
           </SidebarGroupLabel>
           <SidebarMenu>
             {execucoesItems.map((item) => (
