@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Form,
@@ -33,7 +34,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Plane, Calendar, Hotel, Pencil, Trash2, Upload, File, X } from "lucide-react";
+import { Plus, Plane, Calendar, Hotel, Pencil, Trash2, Upload, File, X, FileText, Paperclip, MapPin } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
@@ -55,6 +56,14 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
 
 export default function Passagens() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -238,15 +247,22 @@ export default function Passagens() {
               Nova Solicitação
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Plane className="w-5 h-5" />
                 {editingId ? "Editar Passagem Aérea" : "Nova Solicitação de Passagem Aérea"}
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+                {/* Section 1: Main Info */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Informações da Viagem
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="origem"
@@ -304,143 +320,156 @@ export default function Passagens() {
                       </FormItem>
                     )}
                   />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="objetivo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Objetivo *</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Descreva o objetivo da viagem" {...field} data-testid="input-objetivo" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="diretoria"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Diretoria</FormLabel>
+                        <FormControl>
+                          <ComboboxCreatable
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Selecione ou crie uma diretoria"
+                            emptyText="Nenhuma diretoria encontrada"
+                            createText="Criar diretoria"
+                            searchText="Buscar diretoria"
+                            apiEndpoint="/api/diretorias"
+                            queryKey="/api/diretorias"
+                            label="Diretoria"
+                            testId="select-diretoria"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="observacoes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Informações adicionais (opcional)" {...field} data-testid="input-observacoes" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="hospedagemId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hospedagem Relacionada (Opcional)</FormLabel>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} 
+                          value={field.value?.toString() || "none"}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-hospedagem">
+                              <SelectValue placeholder="Selecione uma hospedagem" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhuma hospedagem</SelectItem>
+                            {hospedagens.map((h) => (
+                              <SelectItem key={h.id} value={h.id.toString()}>
+                                {h.localidade} - {h.nomeHotel} ({formatDate(h.checkIn)} até {formatDate(h.checkOut)})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          <Hotel className="inline h-4 w-4 mr-1" />
+                          Vincule esta passagem a uma solicitação de hospedagem existente
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="objetivo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Objetivo *</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Descreva o objetivo da viagem" {...field} data-testid="input-objetivo" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <Separator />
 
-                <FormField
-                  control={form.control}
-                  name="diretoria"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Diretoria</FormLabel>
-                      <FormControl>
-                        <ComboboxCreatable
-                          value={field.value || ""}
-                          onValueChange={field.onChange}
-                          placeholder="Selecione ou crie uma diretoria"
-                          emptyText="Nenhuma diretoria encontrada"
-                          createText="Criar diretoria"
-                          searchText="Buscar diretoria"
-                          apiEndpoint="/api/diretorias"
-                          queryKey="/api/diretorias"
-                          label="Diretoria"
-                          testId="select-diretoria"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="observacoes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observações</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Informações adicionais (opcional)" {...field} data-testid="input-observacoes" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="hospedagemId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hospedagem Relacionada (Opcional)</FormLabel>
-                      <Select 
-                        onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} 
-                        value={field.value?.toString() || "none"}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-hospedagem">
-                            <SelectValue placeholder="Selecione uma hospedagem" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma hospedagem</SelectItem>
-                          {hospedagens.map((h) => (
-                            <SelectItem key={h.id} value={h.id.toString()}>
-                              {h.localidade} - {h.nomeHotel} ({formatDate(h.checkIn)} até {formatDate(h.checkOut)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        <Hotel className="inline h-4 w-4 mr-1" />
-                        Vincule esta passagem a uma solicitação de hospedagem existente
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-2">
-                  <FormLabel>Anexos</FormLabel>
-                  <div className="border-2 border-dashed rounded-md p-4">
-                    <div className="flex items-center justify-center">
-                      <label className="cursor-pointer flex flex-col items-center">
-                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                        <span className="text-sm text-muted-foreground">
-                          Clique para selecionar arquivos
-                        </span>
-                        <input
-                          type="file"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files) {
-                              setAnexos(prev => [...prev, ...Array.from(e.target.files!)]);
-                            }
-                          }}
-                          data-testid="input-anexos"
-                        />
-                      </label>
-                    </div>
-                    {anexos.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <p className="text-sm font-medium">Arquivos selecionados:</p>
+                {/* Section 2: Attachments */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Anexos e Comprovantes
+                  </h3>
+                  
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors">
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium mb-1">Adicionar Novos Anexos</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Arraste arquivos ou clique para selecionar
+                    </p>
+                    <Input
+                      type="file"
+                      multiple
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setAnexos(prev => [...prev, ...Array.from(e.target.files!)]);
+                        }
+                      }}
+                      className="cursor-pointer"
+                      data-testid="input-anexos"
+                    />
+                    <FormDescription className="mt-2">
+                      Anexe documentos, comprovantes ou informações complementares
+                    </FormDescription>
+                  </div>
+                  
+                  {/* Selected Files Preview */}
+                  {anexos.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Arquivos Selecionados ({anexos.length})</p>
+                      <div className="space-y-1">
                         {anexos.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
-                            <div className="flex items-center gap-2">
-                              <File className="w-4 h-4" />
-                              <span className="text-sm">{file.name}</span>
-                            </div>
+                          <div key={index} className="flex items-center gap-2 text-sm p-2 rounded border bg-muted/30">
+                            <FileText className="w-4 h-4" />
+                            <span className="flex-1 truncate">{file.name}</span>
+                            <span className="text-xs">{formatFileSize(file.size)}</span>
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              className="h-6 w-6"
                               onClick={() => setAnexos(prev => prev.filter((_, i) => i !== index))}
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3 h-3" />
                             </Button>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full"
+                  size="lg"
                   disabled={createMutation.isPending}
                   data-testid="submit-passagem"
                 >

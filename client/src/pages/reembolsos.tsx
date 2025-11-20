@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormControl,
@@ -28,6 +29,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -38,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X, Pencil, File } from "lucide-react";
+import { Plus, FileText, DollarSign, Trash2, Receipt, Upload, Check, X, Pencil, File, Paperclip, Calendar } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
 import { useToast } from "@/hooks/use-toast";
@@ -74,6 +76,14 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
 
 export default function Reembolsos() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -343,15 +353,22 @@ export default function Reembolsos() {
               Nova Solicitação
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle style={{ color: "#004650" }}>
+              <DialogTitle className="flex items-center gap-2">
+                <Receipt className="w-5 h-5" />
                 {editingId ? "Editar Reembolso" : "Nova Solicitação de Reembolso"}
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Section 1: Main Info */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Informações Principais
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="motivo"
@@ -396,54 +413,55 @@ export default function Reembolsos() {
                       </FormItem>
                     )}
                   />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="justificativa"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Justificativa *</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva a justificativa para o reembolso..."
+                            rows={3}
+                            {...field}
+                            data-testid="textarea-justificativa"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="observacoes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Observações adicionais (opcional)"
+                            rows={2}
+                            {...field}
+                            data-testid="textarea-observacoes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="justificativa"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel style={{ color: "#004650" }}>
-                        Justificativa *
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descreva a justificativa para o reembolso..."
-                          rows={3}
-                          {...field}
-                          data-testid="textarea-justificativa"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <Separator />
 
-                <FormField
-                  control={form.control}
-                  name="observacoes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel style={{ color: "#004650" }}>
-                        Observações
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Observações adicionais (opcional)"
-                          rows={2}
-                          {...field}
-                          data-testid="textarea-observacoes"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="border-t pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold" style={{ color: "#004650" }}>
-                      Itens de Despesa *
+                {/* Section 2: Items */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Itens de Despesa
                     </h3>
                     <Button
                       type="button"
@@ -650,56 +668,76 @@ export default function Reembolsos() {
                             )}
                           />
 
-                          <div>
-                            <FormLabel style={{ color: "#004650" }}>
-                              Comprovante (Nota Fiscal/Recibo)
-                            </FormLabel>
-                            <div className="mt-2 space-y-2">
-                              {form.watch(`itens.${index}.comprovante`) && (() => {
-                                try {
-                                  const comprovanteStr = form.watch(`itens.${index}.comprovante`);
-                                  if (!comprovanteStr) return null;
-                                  const fileData = JSON.parse(comprovanteStr);
-                                  return (
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <File className="h-4 w-4 text-green-600" />
-                                      <a
-                                        href={`/${fileData.path}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:text-blue-800 underline text-xs"
-                                        data-testid={`link-comprovante-${index}`}
-                                      >
-                                        {fileData.originalName || "Comprovante anexado"}
-                                      </a>
-                                      <span className="text-xs text-muted-foreground">
-                                        ({(fileData.size / 1024).toFixed(1)}KB)
-                                      </span>
-                                    </div>
-                                  );
-                                } catch {
-                                  return (
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <File className="h-4 w-4 text-green-600" />
-                                      <span className="text-xs text-muted-foreground">
-                                        Comprovante existente
-                                      </span>
-                                    </div>
-                                  );
-                                }
-                              })()}
-                              {comprovantes[index] && comprovantes[index].length > 0 && (
+                          <div className="space-y-3">
+                            <FormLabel>Comprovante (Nota Fiscal/Recibo)</FormLabel>
+                            
+                            {/* Existing Comprovante */}
+                            {form.watch(`itens.${index}.comprovante`) && (() => {
+                              try {
+                                const comprovanteStr = form.watch(`itens.${index}.comprovante`);
+                                if (!comprovanteStr) return null;
+                                const fileData = JSON.parse(comprovanteStr);
+                                return (
+                                  <div className="space-y-2">
+                                    <p className="text-sm font-medium">Comprovante Existente</p>
+                                    <a
+                                      href={`/${fileData.path}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 text-sm p-2 rounded border hover-elevate"
+                                      data-testid={`link-comprovante-${index}`}
+                                    >
+                                      <FileText className="w-4 h-4 text-muted-foreground" />
+                                      <span className="flex-1">{fileData.originalName || "Comprovante anexado"}</span>
+                                      <span className="text-xs text-muted-foreground">{formatFileSize(fileData.size)}</span>
+                                    </a>
+                                  </div>
+                                );
+                              } catch {
+                                return (
+                                  <div className="flex items-center gap-2 text-sm p-2 rounded border">
+                                    <FileText className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Comprovante existente</span>
+                                  </div>
+                                );
+                              }
+                            })()}
+                            
+                            {/* Upload Zone */}
+                            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary transition-colors">
+                              <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-xs font-medium mb-1">Adicionar Novo Comprovante</p>
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Arraste arquivos ou clique para selecionar
+                              </p>
+                              <Input
+                                type="file"
+                                multiple
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleFileChange(index, e.target.files)}
+                                className="cursor-pointer"
+                                data-testid={`input-file-${index}`}
+                              />
+                              <FormDescription className="mt-1">
+                                Aceita múltiplos arquivos (imagens e PDF, max 10MB cada)
+                              </FormDescription>
+                            </div>
+                            
+                            {/* Selected Files Preview */}
+                            {comprovantes[index] && comprovantes[index].length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">Arquivos Selecionados ({comprovantes[index].length})</p>
                                 <div className="space-y-1">
                                   {comprovantes[index].map((file, fileIdx) => (
-                                    <div key={fileIdx} className="flex items-center gap-2 text-sm">
-                                      <Check className="h-4 w-4 text-green-600" />
-                                      <span className="text-xs text-muted-foreground truncate">
-                                        {file.name}
-                                      </span>
+                                    <div key={fileIdx} className="flex items-center gap-2 text-sm p-2 rounded border bg-muted/30">
+                                      <FileText className="w-4 h-4" />
+                                      <span className="flex-1 truncate">{file.name}</span>
+                                      <span className="text-xs">{formatFileSize(file.size)}</span>
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon"
+                                        className="h-6 w-6"
                                         onClick={() => {
                                           setComprovantes(prev => {
                                             const updated = { ...prev };
@@ -712,26 +750,13 @@ export default function Reembolsos() {
                                         }}
                                         data-testid={`button-remove-file-${index}-${fileIdx}`}
                                       >
-                                        <X className="h-3 w-3" />
+                                        <X className="w-3 h-3" />
                                       </Button>
                                     </div>
                                   ))}
                                 </div>
-                              )}
-                              <div>
-                                <Input
-                                  type="file"
-                                  multiple
-                                  accept="image/*,.pdf"
-                                  onChange={(e) => handleFileChange(index, e.target.files)}
-                                  className="cursor-pointer"
-                                  data-testid={`input-file-${index}`}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Aceita múltiplos arquivos (imagens e PDF, max 10MB cada)
-                                </p>
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </Card>
@@ -743,46 +768,35 @@ export default function Reembolsos() {
                       {form.formState.errors.itens.message}
                     </p>
                   )}
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "#4A5458" }}>
-                      Valor Total Calculado:
-                    </p>
-                    <p
-                      className="text-2xl font-bold mt-1"
-                      style={{ color: "#004650" }}
-                      data-testid="total-calculated"
-                    >
-                      {formatCurrency(totalCalculado)}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setDialogOpen(false)}
-                      data-testid="button-cancel"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending}
-                      data-testid="button-submit"
-                      style={{ backgroundColor: "#004650", color: "white" }}
-                    >
-                      {createMutation.isPending 
-                        ? "Salvando..." 
-                        : editingId 
-                          ? "Atualizar Reembolso" 
-                          : "Criar Reembolso"
-                      }
-                    </Button>
+                  
+                  {/* Total Display */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Valor Total Calculado:
+                      </p>
+                      <p className="text-2xl font-bold mt-1" data-testid="total-calculated">
+                        {formatCurrency(totalCalculado)}
+                      </p>
+                    </div>
+                    <DollarSign className="w-8 h-8 text-muted-foreground opacity-20" />
                   </div>
                 </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={createMutation.isPending}
+                  data-testid="button-submit"
+                >
+                  {createMutation.isPending 
+                    ? "Salvando..." 
+                    : editingId 
+                      ? "Atualizar Reembolso" 
+                      : "Criar Reembolso"
+                  }
+                </Button>
               </form>
             </Form>
           </DialogContent>
@@ -855,41 +869,63 @@ export default function Reembolsos() {
           {reembolsos.map((item) => (
             <Card
               key={item.id}
-              className="border-l-4 border-l-accent hover:shadow-md transition-shadow"
+              className="hover-elevate transition-all"
               data-testid={`reembolso-${item.id}`}
             >
               <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <Receipt className="w-5 h-5 text-accent-foreground flex-shrink-0" />
-                      <h3 className="text-lg font-semibold text-foreground">
-                        Reembolso #{item.id}
-                      </h3>
+                <div className="space-y-4">
+                  {/* Header: Title + Status */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Receipt className="w-5 h-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{item.motivo}</h3>
                     </div>
-                    <p className="text-muted-foreground mb-3">{item.motivo}</p>
-                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                      <div>
-                        <span className="font-medium">Data:</span>{" "}
-                        {formatDate(item.dataSolicitacao!)}
-                      </div>
-                      {item.centroCusto && (
-                        <div>
-                          <span className="font-medium">Centro de Custo:</span>{" "}
-                          {item.centroCusto}
-                        </div>
-                      )}
-                    </div>
+                    <StatusBadge status={item.status || "Solicitado"} />
                   </div>
-                  <div className="flex flex-col items-end gap-3 ml-6">
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-accent-foreground mb-2">
-                        {formatCurrency(item.valorTotalSolicitado)}
-                      </p>
-                      <StatusBadge status={item.status || "Solicitado"} />
+                  
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      <span>Data:</span>
+                      <span className="font-medium text-foreground">{formatDate(item.dataSolicitacao!)}</span>
                     </div>
-                    {(canEdit(item) || canDelete(item)) && (
-                      <div className="flex gap-2">
+                    {item.centroCusto && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <FileText className="w-4 h-4" />
+                        <span>Centro de Custo:</span>
+                        <span className="font-medium text-foreground">{item.centroCusto}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <DollarSign className="w-4 h-4" />
+                      <span>Valor Total:</span>
+                      <span className="font-medium text-foreground">{formatCurrency(item.valorTotalSolicitado)}</span>
+                    </div>
+                    {item.itens && item.itens.length > 0 && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Receipt className="w-4 h-4" />
+                        <span>Itens:</span>
+                        <span className="font-medium text-foreground">{item.itens.length}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {item.justificativa && (
+                    <>
+                      <Separator />
+                      <div className="text-sm">
+                        <p className="font-medium mb-1">Justificativa:</p>
+                        <p className="text-muted-foreground">{item.justificativa}</p>
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Actions */}
+                  {(canEdit(item) || canDelete(item)) && (
+                    <>
+                      <Separator />
+                      <div className="flex gap-2 justify-end">
                         {canEdit(item) && (
                           <Button
                             variant="outline"
@@ -897,22 +933,24 @@ export default function Reembolsos() {
                             onClick={() => handleEdit(item)}
                             data-testid={`button-edit-${item.id}`}
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Editar
                           </Button>
                         )}
                         {canDelete(item) && (
                           <Button
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
                             onClick={() => handleDelete(item)}
                             data-testid={`button-delete-${item.id}`}
                           >
-                            <Trash2 className="w-4 h-4 text-destructive" />
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Excluir
                           </Button>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

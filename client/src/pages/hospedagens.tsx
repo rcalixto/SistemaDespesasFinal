@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Form,
@@ -33,7 +34,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Hotel, Calendar, MapPin, Plane, Pencil, Trash2, Upload, File, X } from "lucide-react";
+import { Plus, Hotel, Calendar, MapPin, Plane, Pencil, Trash2, Upload, File, X, FileText, Paperclip } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ComboboxCreatable } from "@/components/ComboboxCreatable";
@@ -55,6 +56,14 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
 
 export default function Hospedagens() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -236,15 +245,22 @@ export default function Hospedagens() {
               Nova Solicitação
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Hotel className="w-5 h-5" />
                 {editingId ? "Editar Hospedagem" : "Nova Solicitação de Hospedagem"}
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+                {/* Section 1: Main Info */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Informações da Hospedagem
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="cidade"
