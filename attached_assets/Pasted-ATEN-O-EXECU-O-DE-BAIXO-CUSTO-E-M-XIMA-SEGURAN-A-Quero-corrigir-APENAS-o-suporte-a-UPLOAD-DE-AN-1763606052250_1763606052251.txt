@@ -1,0 +1,92 @@
+ATENÇÃO — EXECUÇÃO DE BAIXO CUSTO E MÁXIMA SEGURANÇA
+
+Quero corrigir APENAS o suporte a UPLOAD DE ANEXOS no módulo de ADIANTAMENTOS.
+
+O objetivo é tornar o módulo consistente com Reembolsos, Passagens e Hospedagens.
+
+⚠️ ALTERAR SOMENTE OS ARQUIVOS ABAIXO:
+- server/routes.ts          (somente as rotas de adiantamentos)
+- client/src/pages/adiantamentos.tsx
+
+⚠️ NÃO MEXER EM:
+- server/storage.ts
+- shared/schema.ts
+- reembolsos, passagens, hospedagens, prestação de adiantamento
+- autenticação
+- componentes globais
+- lógica de workflow ou status
+
+===========================================
+🎯 OBJETIVO GERAL
+Implementar upload de arquivos nos adiantamentos, usando o mesmo padrão que já existe nos módulos Reembolsos, Passagens e Hospedagens.
+
+Isso inclui:
+- aceitar multipart/form-data
+- extrair req.files com multer
+- extrair req.body corretamente
+- salvar metadados dos arquivos no campo "anexos"
+- permitir edição com preservação de anexos antigos
+
+===========================================
+🛠️ BACKEND (server/routes.ts)
+Nas rotas:
+
+POST /api/adiantamentos  
+PATCH /api/adiantamentos/:id
+
+1. Adicionar multer:
+   upload.array("anexos")
+
+2. Tratar req.body + req.files:
+   - converter campos numéricos
+   - converter campos de data
+   - se existir algum campo JSON como "itens", fazer JSON.parse(itens)
+
+3. Construir o array de metadados EXACTAMENTE neste formato:
+   {
+     originalName,
+     path,
+     mimetype,
+     size
+   }
+
+4. No PATCH:
+   - preservar anexos antigos se o usuário não enviar novos
+   - se enviar novos, concatenar com os existentes
+
+5. NÃO alterar nenhuma lógica de aprovação, status ou usuários.
+
+===========================================
+🛠️ FRONTEND (client/src/pages/adiantamentos.tsx)
+Na página de adiantamentos:
+
+1. Converter o envio de JSON para envio via FormData:
+   - incluir todos os campos textuais e numéricos
+   - anexar todos os arquivos selecionados no componente de upload:
+     formData.append("anexos", file);
+
+2. Preservar anexos antigos na edição:
+   - se não houver novos anexos, enviar uma chave tipo:
+     formData.append("existingAnexos", JSON.stringify(existingAnexos));
+
+3. NÃO alterar a UI/UX:
+   A interface está correta. Apenas fazer o upload funcionar.
+
+4. NÃO alterar:
+   - validações
+   - componentes
+   - layout
+   - lógica de status
+   - nomenclatura dos campos
+   - fluxo de criação/edição já existente
+
+===========================================
+📌 IMPORTANTE
+Não quero que você reescreva a página inteira.
+Não quero que você refatore backend.
+Não quero que você mexa em schemas e storage.
+Apenas adicione o suporte a upload no módulo de ADIANTAMENTOS.
+
+===========================================
+
+Pode executar SOMENTE essas mudanças.
