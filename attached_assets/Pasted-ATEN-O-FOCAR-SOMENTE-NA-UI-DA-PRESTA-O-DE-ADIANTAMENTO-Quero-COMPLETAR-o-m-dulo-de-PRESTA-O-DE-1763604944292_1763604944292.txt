@@ -1,0 +1,72 @@
+ATENÇÃO — FOCAR SOMENTE NA UI DA PRESTAÇÃO DE ADIANTAMENTO
+
+Quero COMPLETAR o módulo de PRESTAÇÃO DE ADIANTAMENTO.
+
+Condições atuais:
+- Backend já está pronto e funcional para criar prestação + itens.
+- A página prestacao-adiantamentos.tsx está incompleta:
+  - UI básica
+  - Sem dialog completo
+  - Sem itens dinâmicos
+  - Sem upload de comprovantes
+
+ARQUIVO QUE VOCÊ PODE MODIFICAR:
+- client/src/pages/prestacao-adiantamentos.tsx
+
+⚠️ NÃO MEXER EM:
+- server/routes.ts
+- server/storage.ts
+- shared/schema.ts
+- outros módulos (reembolsos, passagens, hospedagens, adiantamentos)
+
+OBJETIVO:
+Implementar uma tela e dialog de PRESTAÇÃO DE ADIANTAMENTO com a MESMA experiência do módulo de REEMBOLSOS, porém ligada aos adiantamentos.
+
+REQUISITOS:
+
+1) LISTAGEM
+- Listar as prestações de adiantamento existentes.
+- Mostrar:
+  - Adiantamento associado
+  - Colaborador
+  - Valores principais (adiantado, gasto, diferença)
+  - Status
+
+2) DIALOG DE CRIAÇÃO/EDIÇÃO
+- Estrutura em 3 seções:
+  1. Informações Básicas da Prestação
+     - Adiantamento relacionado (select)
+     - Data da prestação
+     - Observações
+  2. Itens de Despesa
+     - Lista dinâmica (add/remover)
+     - Campos por item:
+       - categoria
+       - descrição
+       - dataDespesa
+       - valor (como string no input, número só no submit)
+  3. Comprovantes
+     - Upload de comprovantes por item, usando mesmo padrão visual de Reembolsos:
+       - zona drag-and-drop
+       - preview dos arquivos
+       - metadados exibidos (nome, tamanho)
+
+3) INTEGRAÇÃO COM BACKEND
+- Usar as rotas e tipos já existentes para prestação de adiantamentos.
+- Respeitar a mesma forma de envio de dados (se backend estiver usando JSON, manter JSON; se já estiver preparado para FormData, seguir o padrão usado em Reembolsos).
+- Se necessário, pergunte no próprio código (comentário) qual formato o backend espera, mas NÃO altere o backend automaticamente.
+
+4) UI/UX
+- Reaproveitar os mesmos componentes visuais de Reembolsos:
+  - Dialog
+  - Botões
+  - Cards de itens
+  - Layout responsivo
+
+IMPORTANTE:
+- NÃO criar ou alterar tabelas.
+- NÃO mudar status nem workflow de aprovação.
+- NÃO implementar regras financeiras novas.
+- Somente implementar a tela e o fluxo de PRESTAÇÃO usando o que já existe no backend.
+
+Aplique somente essas mudanças.
