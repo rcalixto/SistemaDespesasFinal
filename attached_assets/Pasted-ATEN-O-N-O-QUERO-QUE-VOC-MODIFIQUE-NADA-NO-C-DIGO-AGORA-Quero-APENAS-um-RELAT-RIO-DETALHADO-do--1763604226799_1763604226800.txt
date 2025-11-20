@@ -1,0 +1,56 @@
+ATENÇÃO: NÃO QUERO QUE VOCÊ MODIFIQUE NADA NO CÓDIGO AGORA.
+
+Quero APENAS um RELATÓRIO DETALHADO do estado atual do projeto, para eu poder planejar os próximos passos com outra IA.
+
+Por favor, gere um resumo técnico ABRANGENTE contendo:
+
+1) MÓDULOS & PÁGINAS
+   - Liste todas as páginas em client/src/pages relacionadas a:
+     • adiantamentos
+     • reembolsos
+     • passagens
+     • hospedagens
+   - Para cada página, descreva sucintamente:
+     • quais operações existem (listar/criar/editar/excluir)
+     • se tem upload de anexos
+     • se usa FormData
+     • se tem controle de status (Solicitado/Aprovado/Rejeitado/etc.)
+     • se tem restrição de edição/exclusão por status
+
+2) BACKEND / ROTAS
+   - Liste todas as rotas em server/routes.ts relacionadas a:
+     • adiantamentos
+     • reembolsos
+     • passagens
+     • hospedagens
+   - Para cada rota, informe:
+     • método e endpoint (GET/POST/PATCH/DELETE)
+     • se aceita multipart/form-data
+     • se usa multer (upload.array / upload.single)
+     • se faz soft delete
+     • se valida permissões (admin/dono/status)
+
+3) STORAGE / PERSISTÊNCIA
+   - Informe quais funções existem em server/storage.ts para esses módulos
+     (ex: createReembolsoWithItens, updateReembolsoWithItens, etc.)
+   - Para cada função, descreva:
+     • se salva anexos e como
+     • se salva itens relacionados
+     • se há algo marcado como TODO/pendente
+
+4) STATUS & WORKFLOW
+   - Liste quais STATUS são usados em cada módulo
+     (adiantamentos, reembolsos, passagens, hospedagens)
+   - Informe se existe alguma lógica de fluxo (ex: só edita se status = Solicitado/Rejeitado)
+
+5) PONTOS PENDENTES / LIMITAÇÕES
+   - Liste o que você considera PENDENTE ou INCOMPLETO nesses módulos
+     (mesmo que seja detalhe de UX, permissão, validação, logs, etc.)
+   - NÃO proponha solução agora, apenas liste os pontos.
+
+IMPORTANTE:
+- NÃO faça nenhuma alteração no código.
+- NÃO rode migrações ou mudanças de schema.
+- Apenas LEIA o código e me devolva um relatório estruturado.
+
+Pode gerar o relatório agora.
