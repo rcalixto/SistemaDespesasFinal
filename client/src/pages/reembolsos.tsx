@@ -325,10 +325,10 @@ export default function Reembolsos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: "#004650" }}>
+          <h1 className="text-4xl font-bold mb-2 text-primary">
             Reembolsos
           </h1>
-          <p style={{ color: "#4A5458" }}>
+          <p className="text-foreground">
             Solicite reembolsos de despesas corporativas com comprovantes
           </p>
         </div>
@@ -345,9 +345,8 @@ export default function Reembolsos() {
         >
           <DialogTrigger asChild>
             <Button
-              className="gap-2"
+              className="gap-2 bg-accent text-primary hover:bg-accent/90"
               data-testid="button-new-reembolso"
-              style={{ backgroundColor: "#FFC828", color: "#004650" }}
             >
               <Plus className="w-4 h-4" />
               Nova Solicitação
@@ -374,7 +373,7 @@ export default function Reembolsos() {
                     name="motivo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: "#004650" }}>Motivo *</FormLabel>
+                        <FormLabel className="text-primary">Motivo *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Ex: Hospedagem em viagem a trabalho"
@@ -392,7 +391,7 @@ export default function Reembolsos() {
                     name="centroCusto"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: "#004650" }}>
+                        <FormLabel className="text-primary">
                           Centro de Custo *
                         </FormLabel>
                         <FormControl>
@@ -487,12 +486,11 @@ export default function Reembolsos() {
                     {fields.map((field, index) => (
                       <Card
                         key={field.id}
-                        className="p-4"
-                        style={{ backgroundColor: "#F5F8FC" }}
+                        className="p-4 bg-[color:var(--abert-bg)]"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium" style={{ color: "#004650" }}>
+                            <h4 className="font-medium text-primary">
                               Item {index + 1}
                             </h4>
                             {fields.length > 1 && (
@@ -514,7 +512,7 @@ export default function Reembolsos() {
                               name={`itens.${index}.categoria`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel style={{ color: "#004650" }}>
+                                  <FormLabel className="text-primary">
                                     Categoria *
                                   </FormLabel>
                                   <Select
@@ -604,7 +602,7 @@ export default function Reembolsos() {
                               name={`itens.${index}.valor`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel style={{ color: "#004650" }}>
+                                  <FormLabel className="text-primary">
                                     Valor *
                                   </FormLabel>
                                   <FormControl>
@@ -633,7 +631,7 @@ export default function Reembolsos() {
                             name={`itens.${index}.descricao`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel style={{ color: "#004650" }}>
+                                <FormLabel className="text-primary">
                                   Descrição *
                                 </FormLabel>
                                 <FormControl>
@@ -653,7 +651,7 @@ export default function Reembolsos() {
                             name={`itens.${index}.dataDespesa`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel style={{ color: "#004650" }}>
+                                <FormLabel className="text-primary">
                                   Data da Despesa *
                                 </FormLabel>
                                 <FormControl>
@@ -804,42 +802,40 @@ export default function Reembolsos() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-l-4" style={{ borderLeftColor: "#004650" }}>
+        <Card className="border-l-4 border-l-primary">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium" style={{ color: "#4A5458" }}>
+                <p className="text-sm font-medium text-foreground">
                   Total de Reembolsos
                 </p>
                 <p
-                  className="text-3xl font-bold mt-2"
-                  style={{ color: "#004650" }}
+                  className="text-3xl font-bold mt-2 text-primary"
                   data-testid="summary-total"
                 >
                   {summary.total}
                 </p>
               </div>
-              <FileText className="w-8 h-8" style={{ color: "#004650", opacity: 0.2 }} />
+              <FileText className="w-8 h-8 text-primary opacity-20" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4" style={{ borderLeftColor: "#004650" }}>
+        <Card className="border-l-4 border-l-primary">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium" style={{ color: "#4A5458" }}>
+                <p className="text-sm font-medium text-foreground">
                   Valor Total
                 </p>
                 <p
-                  className="text-3xl font-bold mt-2"
-                  style={{ color: "#004650" }}
+                  className="text-3xl font-bold mt-2 text-primary"
                   data-testid="summary-total-value"
                 >
                   {formatCurrency(summary.totalValue)}
                 </p>
               </div>
-              <DollarSign className="w-8 h-8" style={{ color: "#004650", opacity: 0.2 }} />
+              <DollarSign className="w-8 h-8 text-primary opacity-20" />
             </div>
           </CardContent>
         </Card>
@@ -869,7 +865,7 @@ export default function Reembolsos() {
           {reembolsos.map((item) => (
             <Card
               key={item.id}
-              className="hover-elevate transition-all"
+              className="hover-elevate transition-all border-l-4 border-l-primary"
               data-testid={`reembolso-${item.id}`}
             >
               <CardContent className="p-6">
@@ -878,35 +874,48 @@ export default function Reembolsos() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <Receipt className="w-5 h-5 text-primary" />
-                      <h3 className="text-lg font-semibold">{item.motivo}</h3>
+                      <h3 className="text-lg font-semibold text-primary">
+                        {item.motivo}
+                      </h3>
                     </div>
                     <StatusBadge status={item.status || "Solicitado"} />
                   </div>
                   
+                  <Separator />
+                  
                   {/* Metadata Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>Data:</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Data:</span>
                       <span className="font-medium text-foreground">{formatDate(item.dataSolicitacao!)}</span>
                     </div>
                     {item.centroCusto && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <FileText className="w-4 h-4" />
-                        <span>Centro de Custo:</span>
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Centro de Custo:</span>
                         <span className="font-medium text-foreground">{item.centroCusto}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <DollarSign className="w-4 h-4" />
-                      <span>Valor Total:</span>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Valor Total:</span>
                       <span className="font-medium text-foreground">{formatCurrency(item.valorTotalSolicitado)}</span>
                     </div>
                     {item.itens && item.itens.length > 0 && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Receipt className="w-4 h-4" />
-                        <span>Itens:</span>
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Itens:</span>
                         <span className="font-medium text-foreground">{item.itens.length}</span>
+                      </div>
+                    )}
+                    {item.itens && item.itens.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Anexos:</span>
+                        <span className="font-medium text-foreground">
+                          {item.itens.filter(i => i.comprovante).length}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -915,7 +924,7 @@ export default function Reembolsos() {
                     <>
                       <Separator />
                       <div className="text-sm">
-                        <p className="font-medium mb-1">Justificativa:</p>
+                        <p className="font-medium mb-1 text-foreground">Justificativa:</p>
                         <p className="text-muted-foreground">{item.justificativa}</p>
                       </div>
                     </>
@@ -939,13 +948,12 @@ export default function Reembolsos() {
                         )}
                         {canDelete(item) && (
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDelete(item)}
                             data-testid={`button-delete-${item.id}`}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Excluir
+                            <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         )}
                       </div>
